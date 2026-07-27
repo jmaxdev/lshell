@@ -15,7 +15,7 @@
 
 ## 2. Integrated Text Editor (`ledit`)
 
-Launch `ledit` by running `edit <filename>` (or `ledit`, `micro`, `vim`, `vi`).
+Launch `ledit` by running `edit <filename>` (or `ledit`).
 
 ### Features & UI
 - **Gutter Line Numbers**: Displays line numbers (`0001 │ `) on the left margin.

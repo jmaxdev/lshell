@@ -74,7 +74,7 @@ impl Executor {
             "install-vscode" | "vscode-install" => self.builtin_install_vscode(),
             "install" => self.builtin_install(args),
             "cat" | "type" => self.builtin_cat(args),
-            "edit" | "ledit" | "micro" | "vim" | "vi" => self.builtin_edit(args),
+            "edit" | "ledit" => self.builtin_edit(args),
             "touch" => self.builtin_touch(args),
             "mkdir" => self.builtin_mkdir(args),
             "rm" | "del" => self.builtin_rm(args),
@@ -1058,7 +1058,7 @@ impl Executor {
         }
 
         let cmd = &args[0];
-        let builtins = ["cd", "pwd", "ls", "dir", "tree", "sys", "info", "update", "updater", "install-wt", "wt-install", "install-vscode", "vscode-install", "install", "cat", "type", "edit", "ledit", "micro", "touch", "mkdir", "rm", "del", "clear", "cls", "history", "help", "exit", "..", "...", "...."];
+        let builtins = ["cd", "pwd", "ls", "dir", "tree", "sys", "info", "update", "updater", "install-wt", "wt-install", "install-vscode", "vscode-install", "install", "cat", "type", "edit", "ledit", "touch", "mkdir", "rm", "del", "clear", "cls", "history", "help", "exit", "..", "...", "...."];
         if builtins.contains(&cmd.to_lowercase().as_str()) {
             println!(" {}: lshell Built-in Command", cmd);
             return 0;

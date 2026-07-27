@@ -258,7 +258,7 @@ fn is_valid_cmd(cmd: &str) -> bool {
     }
     let lower = cmd.to_lowercase();
     let builtins = [
-        "cd", "pwd", "ls", "dir", "cat", "type", "edit", "ledit", "micro", "vim", "vi", "touch",
+        "cd", "pwd", "ls", "dir", "cat", "type", "edit", "ledit", "touch",
         "mkdir", "rm", "del", "which", "where", "clear", "cls", "history", "help", "exit", "quit",
         "export", "..", "...", "....", "tree", "sys", "info", "update", "updater", "install-wt", "wt-install", "install-vscode", "vscode-install", "install", "cargo", "git", "npm", "npx", "node",
         "python", "py", "rustc", "code", "cmd", "powershell", "curl", "wget", "ssh", "docker",

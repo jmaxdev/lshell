@@ -20,7 +20,7 @@
 | `top` | `ps` | Display styled system information, OS, CPU cores, current PID, and memory model card. |
 | `sys` | `info` | Display stylized system information card. |
 | `cat <file>` | `type` | Print line-numbered contents of a text file. |
-| `edit <file>`| `ledit`, `micro`, `vim`, `vi` | Launch the full-screen interactive TUI text editor. |
+| `edit <file>`| `ledit` | Launch the full-screen interactive TUI text editor. |
 | `touch <file>`| | Create one or more empty files. |
 | `mkdir <dir>`| | Create one or more directory paths recursively. |
 | `rm <path>` | `del` | Remove files or directories recursively. |
