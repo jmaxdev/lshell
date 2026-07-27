@@ -588,13 +588,13 @@ impl Executor {
                 Ok(rel) => {
                     if rel.updated() {
                         println!(
-                            "\n {}{}Successfully updated lshell to version {}!{}",
+                            "\n {}{}Successfully updated lshell to version {}! Exiting...{}",
                             SetAttribute(Attribute::Bold),
                             SetForegroundColor(Color::AnsiValue(78)),
                             rel.version(),
                             ResetColor
                         );
-                        0
+                        std::process::exit(0);
                     } else {
                         println!(" lshell is already up to date (version {}).", rel.version());
                         0
