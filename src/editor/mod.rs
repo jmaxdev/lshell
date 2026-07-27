@@ -262,7 +262,7 @@ fn is_valid_cmd(cmd: &str) -> bool {
         "mkdir", "rm", "del", "which", "where", "clear", "cls", "history", "help", "exit", "quit",
         "export", "..", "...", "....", "tree", "sys", "info", "update", "updater", "install-wt", "wt-install", "install-vscode", "vscode-install", "install", "cargo", "git", "npm", "npx", "node",
         "python", "py", "rustc", "code", "cmd", "powershell", "curl", "wget", "ssh", "docker",
-        "z", "jump", "alias", "search", "find", "usage", "du", "bench", "time", "top", "ps",
+        "z", "jump", "alias", "search", "find", "usage", "du", "bench", "time", "top", "ps", "version",
     ];
     builtins.contains(&lower.as_str())
 }

@@ -69,6 +69,7 @@ impl Executor {
             "ls" | "dir" => self.builtin_ls(args),
             "tree" => self.builtin_tree(args),
             "sys" | "info" => self.builtin_sys(),
+            "version" | "--version" | "-v" => self.builtin_version(),
             "update" | "updater" => self.builtin_update(),
             "install-wt" | "wt-install" => self.builtin_install_wt(),
             "install-vscode" | "vscode-install" => self.builtin_install_vscode(),
@@ -454,6 +455,7 @@ impl Executor {
         let arch = env::consts::ARCH;
         let username = env::var("USERNAME").or_else(|_| env::var("USER")).unwrap_or_else(|_| "lshell".to_string());
         let rust_ver = "1.85.0";
+        let app_ver = env!("CARGO_PKG_VERSION");
 
         println!();
         println!(
@@ -471,6 +473,12 @@ impl Executor {
             " {}{}+------------------------------------------------------+{}",
             SetAttribute(Attribute::Bold),
             SetForegroundColor(Color::AnsiValue(141)),
+            ResetColor
+        );
+        println!(
+            "   📦 Shell Version:  {}{}{}",
+            SetForegroundColor(Color::AnsiValue(150)),
+            app_ver,
             ResetColor
         );
         println!(
@@ -504,6 +512,17 @@ impl Executor {
             ResetColor
         );
 
+        0
+    }
+
+    pub fn builtin_version(&self) -> i32 {
+        println!(
+            " {}{}lshell v{}{}",
+            SetAttribute(Attribute::Bold),
+            SetForegroundColor(Color::AnsiValue(78)),
+            env!("CARGO_PKG_VERSION"),
+            ResetColor
+        );
         0
     }
 
@@ -1020,7 +1039,7 @@ impl Executor {
         }
 
         let cmd = &args[0];
-        let builtins = ["cd", "pwd", "ls", "dir", "tree", "sys", "info", "update", "updater", "install-wt", "wt-install", "install-vscode", "vscode-install", "install", "cat", "type", "edit", "ledit", "touch", "mkdir", "rm", "del", "clear", "cls", "history", "help", "exit", "..", "...", "...."];
+        let builtins = ["cd", "pwd", "ls", "dir", "tree", "sys", "info", "version", "update", "updater", "install-wt", "wt-install", "install-vscode", "vscode-install", "install", "cat", "type", "edit", "ledit", "touch", "mkdir", "rm", "del", "clear", "cls", "history", "help", "exit", "..", "...", "...."];
         if builtins.contains(&cmd.to_lowercase().as_str()) {
             println!(" {}: lshell Built-in Command", cmd);
             return 0;

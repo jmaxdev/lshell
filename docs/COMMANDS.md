@@ -19,6 +19,7 @@
 | `bench <cmd>`| `time` | High-precision execution timer measuring command duration in milliseconds and reporting status. |
 | `top` | `ps` | Display styled system information, OS, CPU cores, current PID, and memory model card. |
 | `sys` | `info` | Display stylized system information card. |
+| `version` | `--version`, `-v` | Print lshell version. |
 | `cat <file>` | `type` | Print line-numbered contents of a text file. |
 | `edit <file>`| `ledit` | Launch the full-screen interactive TUI text editor. |
 | `touch <file>`| | Create one or more empty files. |

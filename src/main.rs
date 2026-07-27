@@ -46,6 +46,10 @@ fn main() {
                 }
             }
             return;
+        } else if arg == "version" || arg == "--version" || arg == "-v" {
+            let executor = Executor::new();
+            executor.builtin_version();
+            return;
         } else if arg == "--prompt" {
             let code = args.get(2).and_then(|s| s.parse::<i32>().ok()).unwrap_or(0);
             let prompt_str = PromptBuilder::build(code, &config);
