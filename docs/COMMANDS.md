@@ -27,7 +27,7 @@
 | `export <K=V>`| | View or set environment variables (`export KEY=VALUE`). |
 | `which <cmd>`| `where` | Locate binary executable path in `PATH` or confirm built-in status. |
 | `history` | | Print indexed list of executed command history. |
-| `update` | `updater` | Check for and install the latest lshell release from GitHub Releases (or git fallback). |
+| `update` | `updater` | Check for and install the latest lshell release from GitHub Releases. |
 | `install` | | Register lshell into Windows Terminal (`install-wt`) and VS Code (`install-vscode`). |
 | `clear` | `cls` | Clear terminal screen and scrollback buffer. |
 | `help` | | Display the built-in command summary menu. |

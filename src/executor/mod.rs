@@ -556,7 +556,6 @@ impl Executor {
             ResetColor
         );
 
-        println!(" Checking GitHub Releases for latest binary update...");
         let updater_status = self_update::backends::github::Update::configure()
             .repo_owner("jmaxdev")
             .repo_name("lshell")
@@ -576,56 +575,19 @@ impl Executor {
                             rel.version(),
                             ResetColor
                         );
-                        return 0;
+                        0
                     } else {
                         println!(" lshell is already up to date (version {}).", rel.version());
-                        return 0;
+                        0
                     }
                 }
                 Err(e) => {
-                    eprintln!(" GitHub release update check skipped: {}. Trying git repository update...", e);
+                    eprintln!("lshell: update: failed to update: {}", e);
+                    1
                 }
             },
             Err(e) => {
-                eprintln!(" Unable to configure self-updater: {}. Trying git repository update...", e);
-            }
-        }
-
-        println!(" Fetching latest changes from git repository...");
-        let git_status = Command::new("git")
-            .args(["pull"])
-            .status();
-
-        match git_status {
-            Ok(status) if status.success() => {
-                println!(
-                    " {}Recompiling release binary...{}",
-                    SetForegroundColor(Color::AnsiValue(220)),
-                    ResetColor
-                );
-
-                let build_status = Command::new("cargo")
-                    .args(["build", "--release"])
-                    .status();
-
-                match build_status {
-                    Ok(b_status) if b_status.success() => {
-                        println!(
-                            "\n {}{}Successfully updated lshell!{}",
-                            SetAttribute(Attribute::Bold),
-                            SetForegroundColor(Color::AnsiValue(78)),
-                            ResetColor
-                        );
-                        0
-                    }
-                    _ => {
-                        eprintln!("lshell: update: Failed to compile update via cargo build --release");
-                        1
-                    }
-                }
-            }
-            _ => {
-                eprintln!("lshell: update: Failed to run git pull. Check network connection or git repository.");
+                eprintln!("lshell: update: failed to configure updater: {}", e);
                 1
             }
         }
