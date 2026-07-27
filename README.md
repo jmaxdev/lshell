@@ -18,36 +18,6 @@ lshell is a modular, high-performance command-line shell written in Rust. It pro
 - Interactive and CLI updater via `lshell updater` or `updater` (GitHub Releases with Git fallback).
 - Standalone prompt generation mode via the `--prompt` flag.
 
-## Requirements (Building from Source)
-
-- Rust 1.80.0 or higher.
-- Cargo (Rust package manager).
-
-### Compilation and Installation
-
-To build the project in optimized production mode:
-
-```bash
-cargo build --release
-```
-
-The compiled binary will be located at:
-
-```text
-target/release/lshell
-```
-
-To install the executable binary to your local bin path (Linux / macOS):
-
-```bash
-cp target/release/lshell ~/.local/bin/
-```
-
-Or on Windows (PowerShell):
-
-```powershell
-Copy-Item target\release\lshell.exe $HOME\AppData\Local\Microsoft\WindowsApps\
-```
 
 ## Usage Examples
 
@@ -257,11 +227,37 @@ gp = "git pull"
 - `help`: Display help menu and list of available built-in commands.
 - `exit` / `quit`: Exit shell.
 
-## Continuous Integration and Release
+## Requirements (Building from Source)
 
-Automated workflows are managed via GitHub Actions:
-- **CI Workflow** (`.github/workflows/ci.yml`): Runs cross-platform checks and builds on Linux, Windows, and macOS.
-- **Release Workflow** (`.github/workflows/release.yml`): Automatically compiles release binaries upon tag pushes (`v*`) and publishes assets to GitHub Releases.
+- Rust 1.80.0 or higher.
+- Cargo (Rust package manager).
+
+### Compilation and Installation
+
+To build the project in optimized production mode:
+
+```bash
+cargo build --release
+```
+
+The compiled binary will be located at:
+
+```text
+target/release/lshell
+```
+
+To install the executable binary to your local bin path (Linux / macOS):
+
+```bash
+cp target/release/lshell ~/.local/bin/
+```
+
+Or on Windows (PowerShell):
+
+```powershell
+Copy-Item target\release\lshell.exe $HOME\AppData\Local\Microsoft\WindowsApps\
+```
+
 
 ## License
 
