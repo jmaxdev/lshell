@@ -54,6 +54,7 @@ fn main() {
         }
     }
 
+    let mut config = Config::load();
     Config::save_default();
 
     let mut executor = Executor::new();
@@ -71,7 +72,7 @@ fn main() {
                     break;
                 }
 
-                last_exit_code = executor.execute(&input, &config);
+                last_exit_code = executor.execute(&input, &mut config);
             }
             Err(err) => {
                 eprintln!("\nTerminal error: {}", err);

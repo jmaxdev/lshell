@@ -6,6 +6,7 @@ use crossterm::{
     style::{Attribute, Color, ResetColor, SetAttribute, SetForegroundColor},
     terminal::{Clear, ClearType},
 };
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::io::{stdout, Write};
@@ -26,8 +27,9 @@ impl Executor {
         }
     }
 
-    pub fn execute(&mut self, input: &str, config: &Config) -> i32 {
-        let trimmed = input.trim();
+    pub fn execute(&mut self, input: &str, config: &mut Config) -> i32 {
+        let expanded_env = expand_env_vars(input);
+        let trimmed = expanded_env.trim();
         if trimmed.is_empty() {
             return 0;
         }
@@ -56,6 +58,12 @@ impl Executor {
         let code = match cmd.as_str() {
             "exit" | "quit" => std::process::exit(0),
             "cd" => self.builtin_cd(args),
+            "z" | "jump" => self.builtin_z(args),
+            "alias" => self.builtin_alias(args, config),
+            "search" | "find" => self.builtin_search(args),
+            "usage" | "du" => self.builtin_usage(args),
+            "bench" | "time" => self.builtin_bench(args, config),
+            "top" | "ps" => self.builtin_top(),
             "pwd" => self.builtin_pwd(),
             "clear" | "cls" => self.builtin_clear(),
             "ls" | "dir" => self.builtin_ls(args),
@@ -117,6 +125,9 @@ impl Executor {
         match env::set_current_dir(&target) {
             Ok(_) => {
                 self.prev_dir = current;
+                if let Ok(cwd) = env::current_dir() {
+                    record_z_visit(&cwd);
+                }
                 0
             }
             Err(e) => {
@@ -124,6 +135,253 @@ impl Executor {
                 1
             }
         }
+    }
+
+    fn builtin_z(&mut self, args: &[String]) -> i32 {
+        let db = load_z_db();
+        if args.is_empty() {
+            println!(
+                "\n {}{}Frequent Directories (z):{}",
+                SetAttribute(Attribute::Bold),
+                SetForegroundColor(Color::AnsiValue(75)),
+                ResetColor
+            );
+            let mut entries: Vec<_> = db.iter().collect();
+            entries.sort_by(|a, b| b.1.cmp(a.1));
+            for (p, score) in entries.iter().take(10) {
+                println!(" {:>5}  {}", score, p);
+            }
+            println!();
+            return 0;
+        }
+
+        let query = args.join(" ").to_lowercase();
+        let mut matches: Vec<_> = db
+            .iter()
+            .filter(|(p, _)| p.to_lowercase().contains(&query))
+            .collect();
+
+        matches.sort_by(|a, b| b.1.cmp(a.1));
+
+        if let Some((target_path, _)) = matches.first() {
+            let p = PathBuf::from(target_path);
+            self.builtin_cd(&[p.to_string_lossy().to_string()])
+        } else {
+            eprintln!("lshell: z: no matching directory found for '{}'", query);
+            1
+        }
+    }
+
+    fn builtin_alias(&self, args: &[String], config: &mut Config) -> i32 {
+        if args.is_empty() {
+            println!(
+                "\n {}{}Configured Aliases:{}",
+                SetAttribute(Attribute::Bold),
+                SetForegroundColor(Color::AnsiValue(75)),
+                ResetColor
+            );
+            let mut keys: Vec<_> = config.aliases.keys().collect();
+            keys.sort();
+            for k in keys {
+                println!("   {:10} = {}", k, config.aliases.get(k).unwrap());
+            }
+            println!();
+            return 0;
+        }
+
+        if args[0] == "--save" {
+            config.save();
+            println!(
+                " {}{}Aliases saved to ~/.lshell{}",
+                SetAttribute(Attribute::Bold),
+                SetForegroundColor(Color::AnsiValue(78)),
+                ResetColor
+            );
+            return 0;
+        }
+
+        let input = args.join(" ");
+        if let Some((name, val)) = input.split_once('=') {
+            let clean_name = name.trim().to_string();
+            let clean_val = val.trim().trim_matches('"').trim_matches('\'').to_string();
+            config.aliases.insert(clean_name.clone(), clean_val.clone());
+            println!(
+                " {}{}Alias added: {} = '{}'{}",
+                SetAttribute(Attribute::Bold),
+                SetForegroundColor(Color::AnsiValue(78)),
+                clean_name,
+                clean_val,
+                ResetColor
+            );
+        } else {
+            eprintln!("lshell: alias: usage: alias <name>=<command> or alias --save");
+            return 1;
+        }
+
+        0
+    }
+
+    fn builtin_search(&self, args: &[String]) -> i32 {
+        if args.is_empty() {
+            eprintln!("lshell: search: usage: search <query> [path]");
+            return 1;
+        }
+
+        let query = &args[0];
+        let target_dir = if args.len() >= 2 {
+            PathBuf::from(&args[1])
+        } else {
+            env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+        };
+
+        println!(
+            "\n {}{}Searching for '{}' in {}...{}\n",
+            SetAttribute(Attribute::Bold),
+            SetForegroundColor(Color::AnsiValue(75)),
+            query,
+            target_dir.display(),
+            ResetColor
+        );
+
+        let mut count = 0;
+        search_recursive(&target_dir, query, &mut count, 50);
+        println!(
+            " {}{}Found {} matches.{}\n",
+            SetAttribute(Attribute::Bold),
+            SetForegroundColor(Color::AnsiValue(245)),
+            count,
+            ResetColor
+        );
+        0
+    }
+
+    fn builtin_usage(&self, args: &[String]) -> i32 {
+        let target = if !args.is_empty() {
+            PathBuf::from(&args[0])
+        } else {
+            env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+        };
+
+        println!(
+            "\n {}{}Disk Usage Analysis: {}{}\n",
+            SetAttribute(Attribute::Bold),
+            SetForegroundColor(Color::AnsiValue(75)),
+            target.display(),
+            ResetColor
+        );
+
+        let mut items = Vec::new();
+        let mut total_size = 0u64;
+
+        if let Ok(entries) = fs::read_dir(&target) {
+            for entry in entries.flatten() {
+                let name = entry.file_name().to_string_lossy().to_string();
+                if name.starts_with('.') {
+                    continue;
+                }
+                let path = entry.path();
+                let size = get_dir_size(&path);
+                total_size += size;
+                items.push((name, size, path.is_dir()));
+            }
+        }
+
+        items.sort_by(|a, b| b.1.cmp(&a.1));
+
+        for (name, size, is_dir) in items {
+            let pct = if total_size > 0 {
+                (size as f64 / total_size as f64 * 100.0) as usize
+            } else {
+                0
+            };
+            let bar_len = pct / 10;
+            let bar = format!("[{}{}]", "█".repeat(bar_len), "░".repeat(10 - bar_len));
+            let icon = if is_dir { "" } else { "📄" };
+
+            println!(
+                "   {} {:>4}% {} {:>10}  {} {}",
+                SetForegroundColor(Color::AnsiValue(78)),
+                pct,
+                bar,
+                format_bytes(size),
+                icon,
+                name
+            );
+            print!("{}", ResetColor);
+        }
+        println!("\n   Total: {}\n", format_bytes(total_size));
+        0
+    }
+
+    fn builtin_bench(&mut self, args: &[String], config: &mut Config) -> i32 {
+        if args.is_empty() {
+            eprintln!("lshell: bench: usage: bench <command...>");
+            return 1;
+        }
+
+        let cmd_str = args.join(" ");
+        println!(
+            "\n {}{}⏱️  Benchmarking: {}{}\n",
+            SetAttribute(Attribute::Bold),
+            SetForegroundColor(Color::AnsiValue(75)),
+            cmd_str,
+            ResetColor
+        );
+
+        let start = std::time::Instant::now();
+        let code = self.execute(&cmd_str, config);
+        let elapsed = start.elapsed();
+
+        println!(
+            "\n {}{}⚡ Command finished in {:.2?} (exit code {}){}\n",
+            SetAttribute(Attribute::Bold),
+            SetForegroundColor(Color::AnsiValue(78)),
+            elapsed,
+            code,
+            ResetColor
+        );
+
+        code
+    }
+
+    fn builtin_top(&self) -> i32 {
+        let os = env::consts::OS;
+        let arch = env::consts::ARCH;
+        let pid = std::process::id();
+        let cpus = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
+
+        println!();
+        println!(
+            " {}{}+------------------------------------------------------+{}",
+            SetAttribute(Attribute::Bold),
+            SetForegroundColor(Color::AnsiValue(141)),
+            ResetColor
+        );
+        println!(
+            " {}{}|               SYSTEM & PROCESS MONITOR               |{}",
+            SetAttribute(Attribute::Bold),
+            SetForegroundColor(Color::AnsiValue(141)),
+            ResetColor
+        );
+        println!(
+            " {}{}+------------------------------------------------------+{}",
+            SetAttribute(Attribute::Bold),
+            SetForegroundColor(Color::AnsiValue(141)),
+            ResetColor
+        );
+        println!("   {}Operating System:{}   {}", SetForegroundColor(Color::AnsiValue(75)), ResetColor, os);
+        println!("   {}Architecture:    {}   {}", SetForegroundColor(Color::AnsiValue(75)), ResetColor, arch);
+        println!("   {}CPU Cores:       {}   {}", SetForegroundColor(Color::AnsiValue(75)), ResetColor, cpus);
+        println!("   {}Current PID:     {}   {}", SetForegroundColor(Color::AnsiValue(75)), ResetColor, pid);
+        println!("   {}Memory Subsystem:{}   64-bit Virtual Memory", SetForegroundColor(Color::AnsiValue(75)), ResetColor);
+        println!(
+            " {}{}+------------------------------------------------------+{}\n",
+            SetAttribute(Attribute::Bold),
+            SetForegroundColor(Color::AnsiValue(141)),
+            ResetColor
+        );
+
+        0
     }
 
     fn builtin_pwd(&self) -> i32 {
@@ -141,11 +399,22 @@ impl Executor {
     }
 
     fn builtin_tree(&self, args: &[String]) -> i32 {
-        let target = if !args.is_empty() {
-            PathBuf::from(&args[0])
-        } else {
-            env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
-        };
+        let mut full = false;
+        let mut to_file = false;
+        let mut target_path = None;
+
+        for arg in args {
+            if arg == "--full" {
+                full = true;
+            } else if arg == "--file" {
+                to_file = true;
+            } else if !arg.starts_with('-') && target_path.is_none() {
+                target_path = Some(PathBuf::from(arg));
+            }
+        }
+
+        let target = target_path.unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+        let max_depth = if full { 3 } else { 1 };
 
         println!(
             "\n {}{} {}{}",
@@ -155,8 +424,28 @@ impl Executor {
             ResetColor
         );
 
-        render_tree_recursive(&target, "", 0, 3);
+        let mut file_buf = if to_file {
+            Some(format!(" {}\n", target.display()))
+        } else {
+            None
+        };
+
+        render_tree_recursive(&target, "", 0, max_depth, &mut file_buf);
         println!();
+
+        if let Some(content) = file_buf {
+            let out_file = PathBuf::from("tree.txt");
+            match fs::write(&out_file, content) {
+                Ok(_) => println!(
+                    " {}{}Tree structure saved to tree.txt{}",
+                    SetAttribute(Attribute::Bold),
+                    SetForegroundColor(Color::AnsiValue(78)),
+                    ResetColor
+                ),
+                Err(e) => eprintln!("lshell: tree: failed to write tree.txt: {}", e),
+            }
+        }
+
         0
     }
 
@@ -840,7 +1129,7 @@ impl Executor {
             ResetColor
         );
         println!(
-            "   {}tree [dir]{}     Draw directory tree structure formatted with icons",
+            "   {}tree [dir] [--full] [--file]{} Draw directory tree (--full for deep tree, --file to save to tree.txt)",
             SetForegroundColor(Color::AnsiValue(78)),
             ResetColor
         );
@@ -921,6 +1210,36 @@ impl Executor {
         );
         println!(
             "   {}export VAR=VAL{} Define environment variables",
+            SetForegroundColor(Color::AnsiValue(78)),
+            ResetColor
+        );
+        println!(
+            "   {}z [query]{}      Smart jump to frequent directory",
+            SetForegroundColor(Color::AnsiValue(78)),
+            ResetColor
+        );
+        println!(
+            "   {}alias [k=v]{}    List/create command aliases (--save to persist)",
+            SetForegroundColor(Color::AnsiValue(78)),
+            ResetColor
+        );
+        println!(
+            "   {}search <query>{} Recursive file & content search",
+            SetForegroundColor(Color::AnsiValue(78)),
+            ResetColor
+        );
+        println!(
+            "   {}usage [dir]{}    Disk usage bar-chart visualizer",
+            SetForegroundColor(Color::AnsiValue(78)),
+            ResetColor
+        );
+        println!(
+            "   {}bench <cmd>{}    High-precision command execution benchmark",
+            SetForegroundColor(Color::AnsiValue(78)),
+            ResetColor
+        );
+        println!(
+            "   {}top / ps{}       System & process monitor card",
             SetForegroundColor(Color::AnsiValue(78)),
             ResetColor
         );
@@ -1008,7 +1327,13 @@ impl Executor {
     }
 }
 
-fn render_tree_recursive(dir: &Path, prefix: &str, depth: usize, max_depth: usize) {
+fn render_tree_recursive(
+    dir: &Path,
+    prefix: &str,
+    depth: usize,
+    max_depth: usize,
+    file_buf: &mut Option<String>,
+) {
     if depth >= max_depth {
         return;
     }
@@ -1043,10 +1368,14 @@ fn render_tree_recursive(dir: &Path, prefix: &str, depth: usize, max_depth: usiz
             );
             print!("{}", ResetColor);
 
+            if let Some(buf) = file_buf.as_mut() {
+                buf.push_str(&format!(" {}{}{:<2} {}\n", prefix, branch, icon, name));
+            }
+
             if is_dir && depth + 1 < max_depth {
                 let mut next_prefix = prefix.to_string();
                 next_prefix.push_str(child_prefix);
-                render_tree_recursive(&entry.path(), &next_prefix, depth + 1, max_depth);
+                render_tree_recursive(&entry.path(), &next_prefix, depth + 1, max_depth, file_buf);
             }
         }
     }
@@ -1105,6 +1434,138 @@ fn format_bytes(bytes: u64) -> String {
     }
 }
 
+fn load_z_db() -> HashMap<String, u32> {
+    let mut db = HashMap::new();
+    if let Some(home) = dirs::home_dir() {
+        let path = home.join(".lshell_z");
+        if let Ok(content) = fs::read_to_string(path) {
+            for line in content.lines() {
+                if let Some((score_str, p)) = line.split_once('|') {
+                    if let Ok(score) = score_str.parse::<u32>() {
+                        db.insert(p.to_string(), score);
+                    }
+                }
+            }
+        }
+    }
+    db
+}
+
+fn save_z_db(db: &HashMap<String, u32>) {
+    if let Some(home) = dirs::home_dir() {
+        let path = home.join(".lshell_z");
+        let mut lines: Vec<_> = db.iter().map(|(p, score)| format!("{}|{}", score, p)).collect();
+        lines.sort();
+        let content = lines.join("\n");
+        let _ = fs::write(path, content);
+    }
+}
+
+fn record_z_visit(path: &Path) {
+    let p_str = path.to_string_lossy().to_string();
+    let mut db = load_z_db();
+    *db.entry(p_str).or_insert(0) += 1;
+    save_z_db(&db);
+}
+
+fn expand_env_vars(input: &str) -> String {
+    let mut result = String::new();
+    let mut chars = input.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if ch == '$' {
+            let mut var_name = String::new();
+            while let Some(&next_ch) = chars.peek() {
+                if next_ch.is_alphanumeric() || next_ch == '_' {
+                    var_name.push(chars.next().unwrap());
+                } else {
+                    break;
+                }
+            }
+            if !var_name.is_empty() {
+                if let Ok(val) = env::var(&var_name) {
+                    result.push_str(&val);
+                } else {
+                    result.push('$');
+                    result.push_str(&var_name);
+                }
+            } else {
+                result.push('$');
+            }
+        } else {
+            result.push(ch);
+        }
+    }
+
+    result
+}
+
+fn search_recursive(dir: &Path, query: &str, count: &mut usize, max_results: usize) {
+    if *count >= max_results {
+        return;
+    }
+
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            if *count >= max_results {
+                break;
+            }
+            let path = entry.path();
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.starts_with('.') || name == "target" || name == "node_modules" {
+                continue;
+            }
+
+            if path.is_dir() {
+                search_recursive(&path, query, count, max_results);
+            } else if path.is_file() {
+                if name.to_lowercase().contains(&query.to_lowercase()) {
+                    println!(
+                        "   {}📄 File match: {}{}",
+                        SetForegroundColor(Color::AnsiValue(78)),
+                        path.display(),
+                        ResetColor
+                    );
+                    *count += 1;
+                }
+
+                if let Ok(content) = fs::read_to_string(&path) {
+                    for (line_no, line) in content.lines().enumerate() {
+                        if *count >= max_results {
+                            break;
+                        }
+                        if line.to_lowercase().contains(&query.to_lowercase()) {
+                            println!(
+                                "   {}:{}{} {} {}",
+                                SetForegroundColor(Color::AnsiValue(75)),
+                                path.display(),
+                                SetForegroundColor(Color::AnsiValue(245)),
+                                line_no + 1,
+                                ResetColor
+                            );
+                            println!("      {}", line.trim());
+                            *count += 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn get_dir_size(path: &Path) -> u64 {
+    if path.is_file() {
+        return fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+    }
+    let mut total = 0;
+    if let Ok(entries) = fs::read_dir(path) {
+        for entry in entries.flatten() {
+            total += get_dir_size(&entry.path());
+        }
+    }
+    total
+}
+
 fn parse_command_line(input: &str) -> Vec<String> {
     let mut args = Vec::new();
     let mut current = String::new();
@@ -1137,4 +1598,72 @@ fn parse_command_line(input: &str) -> Vec<String> {
     }
 
     args
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tree_flags() {
+        let executor = Executor::new();
+        let mut temp_path = env::temp_dir();
+        temp_path.push(format!("lshell_tree_test_{}", std::process::id()));
+        let _ = fs::remove_dir_all(&temp_path);
+        fs::create_dir_all(&temp_path).unwrap();
+
+        let sub_dir = temp_path.join("subdir");
+        fs::create_dir(&sub_dir).unwrap();
+        fs::write(temp_path.join("file1.txt"), "hello").unwrap();
+        fs::write(sub_dir.join("file2.txt"), "world").unwrap();
+
+        let orig_dir = env::current_dir().unwrap();
+        env::set_current_dir(&temp_path).unwrap();
+
+        let res = executor.builtin_tree(&[]);
+        assert_eq!(res, 0);
+        assert!(!temp_path.join("tree.txt").exists());
+
+        let res = executor.builtin_tree(&["--file".to_string()]);
+        assert_eq!(res, 0);
+        let file_path = temp_path.join("tree.txt");
+        assert!(file_path.exists());
+        let content = fs::read_to_string(&file_path).unwrap();
+        assert!(content.contains("file1.txt"));
+        assert!(content.contains("subdir"));
+        assert!(!content.contains("file2.txt"));
+        fs::remove_file(&file_path).unwrap();
+
+        let res = executor.builtin_tree(&["--full".to_string(), "--file".to_string()]);
+        assert_eq!(res, 0);
+        assert!(file_path.exists());
+        let full_content = fs::read_to_string(&file_path).unwrap();
+        assert!(full_content.contains("file1.txt"));
+        assert!(full_content.contains("subdir"));
+        assert!(full_content.contains("file2.txt"));
+
+        env::set_current_dir(orig_dir).unwrap();
+        let _ = fs::remove_dir_all(&temp_path);
+    }
+
+    #[test]
+    fn test_env_var_expansion() {
+        env::set_var("TEST_LSHELL_VAR", "WORLD");
+        let expanded = expand_env_vars("echo HELLO_$TEST_LSHELL_VAR");
+        assert_eq!(expanded, "echo HELLO_WORLD");
+    }
+
+    #[test]
+    fn test_alias_and_export() {
+        let executor = Executor::new();
+        let mut config = Config::default();
+
+        let res = executor.builtin_alias(&["mycls=clear".to_string()], &mut config);
+        assert_eq!(res, 0);
+        assert_eq!(config.aliases.get("mycls"), Some(&"clear".to_string()));
+
+        let res = executor.builtin_export(&["MY_VAR=TEST123".to_string()]);
+        assert_eq!(res, 0);
+        assert_eq!(env::var("MY_VAR").unwrap(), "TEST123");
+    }
 }

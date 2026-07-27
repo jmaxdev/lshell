@@ -45,6 +45,9 @@ impl LeditEditor {
         let mut clipboard = String::new();
         let mut prompt_exit_confirm = false;
 
+        let mut find_mode = false;
+        let mut find_query = String::new();
+
         let mut status_message = if is_new_file {
             "[ New File ]".to_string()
         } else {
@@ -131,7 +134,7 @@ impl LeditEditor {
                 &[
                     ("^G", "Get Help"),
                     ("^O", "WriteOut"),
-                    ("^W", "Where Is"),
+                    ("^F", "Find Text"),
                     ("^K", "Cut Line"),
                     ("^J", "Justify"),
                     ("^C", "Location"),
@@ -164,6 +167,53 @@ impl LeditEditor {
                 }
 
                 let KeyEvent { code, modifiers, .. } = key;
+
+                if find_mode {
+                    match code {
+                        KeyCode::Esc => {
+                            find_mode = false;
+                            status_message = "[ Cancelled search ]".to_string();
+                        }
+                        KeyCode::Enter => {
+                            find_mode = false;
+                            if !find_query.is_empty() {
+                                let mut found = false;
+                                for i in 0..lines.len() {
+                                    let line_idx = (cy + i) % lines.len();
+                                    if let Some(col_idx) = lines[line_idx].find(&find_query) {
+                                        if line_idx != cy || col_idx > cx || i > 0 {
+                                            cy = line_idx;
+                                            cx = col_idx;
+                                            status_message = format!("[ Match found at line {}, col {} ]", cy + 1, cx + 1);
+                                            found = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if !found {
+                                    status_message = format!("[ '{}' not found ]", find_query);
+                                }
+                            }
+                        }
+                        KeyCode::Backspace => {
+                            find_query.pop();
+                            status_message = format!(" Search: {} ", find_query);
+                        }
+                        KeyCode::Char(c) => {
+                            find_query.push(c);
+                            status_message = format!(" Search: {} ", find_query);
+                        }
+                        _ => {}
+                    }
+                    continue;
+                }
+
+                if (code == KeyCode::Char('f') || code == KeyCode::Char('w')) && modifiers.contains(KeyModifiers::CONTROL) {
+                    find_mode = true;
+                    find_query.clear();
+                    status_message = " Search: ".to_string();
+                    continue;
+                }
 
                 if prompt_exit_confirm {
                     prompt_exit_confirm = false;

@@ -34,6 +34,9 @@ pub struct Config {
     #[serde(default = "default_true")]
     pub enable_syntax_highlighting: bool,
 
+    #[serde(default = "default_true")]
+    pub show_dev_badge: bool,
+
     #[serde(default = "default_tree_depth")]
     pub tree_max_depth: usize,
 
@@ -88,6 +91,7 @@ impl Default for Config {
             enable_autosuggestions: true,
             min_autosuggestion_len: 2,
             enable_syntax_highlighting: true,
+            show_dev_badge: true,
             tree_max_depth: 3,
             aliases,
         }
