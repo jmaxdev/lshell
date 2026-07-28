@@ -524,6 +524,7 @@ fn autocomplete_command_or_file(input: &str) -> Option<String> {
             "tail",
             "cp",
             "mv",
+            "theme",
         ];
         for b in builtins {
             if b.starts_with(&query) && b != query {
