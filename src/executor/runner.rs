@@ -247,6 +247,7 @@ pub fn is_builtin(cmd: &str) -> bool {
             | "history"
             | "help"
             | "export"
+            | "secret"
             | "env"
             | "unset"
             | "head"
@@ -300,6 +301,7 @@ pub fn run_builtin(
         "history" => shell_cmds::builtin_history(history, args),
         "help" => shell_cmds::builtin_help(),
         "export" => shell_cmds::builtin_export(args),
+        "secret" => shell_cmds::builtin_secret(args, config),
         "env" => shell_cmds::builtin_env(args),
         "unset" => shell_cmds::builtin_unset(args),
         "head" => fs_cmds::builtin_head(args),

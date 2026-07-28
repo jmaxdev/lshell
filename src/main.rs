@@ -4,6 +4,7 @@ mod executor;
 mod git;
 mod ledit;
 mod prompt;
+pub mod security;
 mod theme;
 
 use config::Config;

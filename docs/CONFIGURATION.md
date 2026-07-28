@@ -27,7 +27,13 @@ ll = "ls -la"
 g = "git"
 cls = "clear"
 e = "edit"
+
+[env]
+GITHUB_TOKEN = "enc:7a3f91b2c4e5..."  # Encrypted using machine-bound key (generated via 'secret set')
+GH_TOKEN = "ghp_xxxxxxxxxxxxxxxxxxxx" # Plaintext or encrypted
 ```
+
+> **Note on Encryption**: Secret environment variables created with `secret set KEY VALUE` are automatically encrypted in `~/.lshell` using a machine-bound key derived from the user and hardware profile. If `~/.lshell` is copied to another machine, the secrets cannot be decrypted.
 
 ---
 

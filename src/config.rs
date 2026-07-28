@@ -42,6 +42,9 @@ pub struct Config {
 
     #[serde(default)]
     pub aliases: HashMap<String, String>,
+
+    #[serde(default)]
+    pub env: HashMap<String, String>,
 }
 
 fn default_theme() -> String {
@@ -94,6 +97,7 @@ impl Default for Config {
             show_dev_badge: true,
             tree_max_depth: 3,
             aliases,
+            env: HashMap::new(),
         }
     }
 }
@@ -105,6 +109,10 @@ impl Config {
             if config_path.exists() {
                 if let Ok(content) = fs::read_to_string(&config_path) {
                     if let Ok(cfg) = toml::from_str::<Config>(&content) {
+                        for (k, v) in &cfg.env {
+                            let plain_val = crate::security::decrypt_val(v);
+                            std::env::set_var(k, plain_val);
+                        }
                         return cfg;
                     }
                 }

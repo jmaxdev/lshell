@@ -154,14 +154,36 @@ pub fn builtin_version() -> i32 {
 }
 
 pub fn check_update_banner() {
-    if let Ok(builder) = self_update::backends::github::Update::configure()
+    let now = match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+        Ok(d) => d.as_secs(),
+        Err(_) => return,
+    };
+
+    if let Some(home) = dirs::home_dir() {
+        let cache_path = home.join(".lshell_update_check");
+        if let Ok(content) = fs::read_to_string(&cache_path) {
+            if let Ok(last_check) = content.trim().parse::<u64>() {
+                if now.saturating_sub(last_check) < 21600 {
+                    return;
+                }
+            }
+        }
+        let _ = fs::write(&cache_path, now.to_string());
+    }
+
+    let mut builder = self_update::backends::github::Update::configure();
+    builder
         .repo_owner("jmaxdev")
         .repo_name("lshell")
         .bin_name("lshell")
-        .current_version(self_update::cargo_crate_version!())
-        .build()
-    {
-        if let Ok(latest) = builder.get_latest_release() {
+        .current_version(self_update::cargo_crate_version!());
+
+    if let Ok(token) = env::var("GITHUB_TOKEN").or_else(|_| env::var("GH_TOKEN")) {
+        builder.auth_token(&token);
+    }
+
+    if let Ok(configured) = builder.build() {
+        if let Ok(latest) = configured.get_latest_release() {
             let latest_ver = latest.version.trim_start_matches('v');
             let current_ver = self_update::cargo_crate_version!();
 
@@ -206,16 +228,22 @@ pub fn builtin_update() -> i32 {
         ResetColor
     );
 
-    let updater_status = self_update::backends::github::Update::configure()
+    let mut builder = self_update::backends::github::Update::configure();
+    builder
         .repo_owner("jmaxdev")
         .repo_name("lshell")
         .bin_name("lshell")
         .show_download_progress(true)
-        .current_version(self_update::cargo_crate_version!())
-        .build();
+        .current_version(self_update::cargo_crate_version!());
+
+    if let Ok(token) = env::var("GITHUB_TOKEN").or_else(|_| env::var("GH_TOKEN")) {
+        builder.auth_token(&token);
+    }
+
+    let updater_status = builder.build();
 
     match updater_status {
-        Ok(builder) => match builder.update() {
+        Ok(configured) => match configured.update() {
             Ok(rel) => {
                 if rel.updated() {
                     println!(
@@ -228,11 +256,11 @@ pub fn builtin_update() -> i32 {
                     std::process::exit(0);
                 } else {
                     println!(" lshell is already up to date (version {}).", rel.version());
-                    0
                 }
+                0
             }
             Err(e) => {
-                eprintln!("lshell: update: failed to update: {}", e);
+                eprintln!("lshell: update error: {}", e);
                 1
             }
         },

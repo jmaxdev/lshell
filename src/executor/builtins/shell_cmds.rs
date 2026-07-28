@@ -143,6 +143,97 @@ pub fn builtin_export(args: &[String]) -> i32 {
     0
 }
 
+pub fn builtin_secret(args: &[String], config: &mut crate::config::Config) -> i32 {
+    if args.is_empty() {
+        println!("lshell: secret: usage: secret <set|get|list> [KEY] [VALUE]");
+        return 1;
+    }
+
+    let action = args[0].to_lowercase();
+    match action.as_str() {
+        "set" => {
+            if args.len() < 2 {
+                eprintln!(
+                    "lshell: secret set: usage: secret set KEY VALUE  or  secret set KEY=VALUE"
+                );
+                return 1;
+            }
+            let (key, val) = if let Some((k, v)) = args[1].split_once('=') {
+                (k.to_string(), v.to_string())
+            } else if args.len() >= 3 {
+                (args[1].clone(), args[2..].join(" "))
+            } else {
+                eprintln!("lshell: secret set: missing value for key '{}'", args[1]);
+                return 1;
+            };
+
+            let encrypted = crate::security::encrypt_val(&val);
+            env::set_var(&key, &val);
+            config.env.insert(key.clone(), encrypted);
+            config.save();
+
+            println!(
+                " {}{}🔒 Encrypted secret '{}' saved securely to ~/.lshell!{}",
+                SetAttribute(Attribute::Bold),
+                SetForegroundColor(Color::AnsiValue(78)),
+                key,
+                ResetColor
+            );
+            0
+        }
+
+        "get" => {
+            if args.len() < 2 {
+                eprintln!("lshell: secret get: usage: secret get <KEY>");
+                return 1;
+            }
+            let key = &args[1];
+            if let Some(enc_val) = config.env.get(key) {
+                let plain = crate::security::decrypt_val(enc_val);
+                println!(" {} = {}", key, plain);
+                0
+            } else if let Ok(env_val) = env::var(key) {
+                println!(" {} = {}", key, env_val);
+                0
+            } else {
+                eprintln!("lshell: secret: key '{}' not found", key);
+                1
+            }
+        }
+
+        "list" => {
+            if config.env.is_empty() {
+                println!(" (no encrypted secrets stored in ~/.lshell)");
+                return 0;
+            }
+            println!(
+                "\n {}{}Encrypted Secrets (~/.lshell):{}",
+                SetAttribute(Attribute::Bold),
+                SetForegroundColor(Color::AnsiValue(75)),
+                ResetColor
+            );
+            for (key, val) in &config.env {
+                let status = if val.starts_with("enc:") {
+                    "🔒 encrypted"
+                } else {
+                    "plain"
+                };
+                println!("   {:20} ({})", key, status);
+            }
+            println!();
+            0
+        }
+
+        _ => {
+            eprintln!(
+                "lshell: secret: unknown action '{}'. Use: set, get, list",
+                action
+            );
+            1
+        }
+    }
+}
+
 pub fn builtin_env(args: &[String]) -> i32 {
     let filter = args.first().map(|s| s.to_lowercase());
     for (key, val) in env::vars() {
@@ -383,7 +474,27 @@ pub fn builtin_help() -> i32 {
         ResetColor
     );
     println!(
-        "   {}history{}        Display command history (Search with Ctrl+R)",
+        "   {}history [clean]{} Display or clean command history (Search with Ctrl+R)",
+        SetForegroundColor(Color::AnsiValue(78)),
+        ResetColor
+    );
+    println!(
+        "   {}export VAR=VAL{} Set session environment variable (in-memory, temporary)",
+        SetForegroundColor(Color::AnsiValue(78)),
+        ResetColor
+    );
+    println!(
+        "   {}secret <set|get|list>{} Persistent machine-encrypted secret environment variable",
+        SetForegroundColor(Color::AnsiValue(78)),
+        ResetColor
+    );
+    println!(
+        "   {}env [query]{}    Display or filter active environment variables",
+        SetForegroundColor(Color::AnsiValue(78)),
+        ResetColor
+    );
+    println!(
+        "   {}unset <VAR>{}    Remove environment variables",
         SetForegroundColor(Color::AnsiValue(78)),
         ResetColor
     );
@@ -404,21 +515,6 @@ pub fn builtin_help() -> i32 {
     );
     println!(
         "   {}mv <src> <dst>{}  Move or rename files or directories",
-        SetForegroundColor(Color::AnsiValue(78)),
-        ResetColor
-    );
-    println!(
-        "   {}env [query]{}    Display or filter environment variables",
-        SetForegroundColor(Color::AnsiValue(78)),
-        ResetColor
-    );
-    println!(
-        "   {}unset <VAR>{}    Remove environment variables",
-        SetForegroundColor(Color::AnsiValue(78)),
-        ResetColor
-    );
-    println!(
-        "   {}export VAR=VAL{} Define environment variables",
         SetForegroundColor(Color::AnsiValue(78)),
         ResetColor
     );

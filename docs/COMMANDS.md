@@ -72,6 +72,42 @@ lshell> history clear
 lshell> history -c
 ```
 
+### Machine-Bound Secret Encryption (`secret`)
+
+```bash
+# Save an encrypted secret securely in ~/.lshell (bound to user + hardware ID)
+lshell> secret set GITHUB_TOKEN ghp_1234567890abcdef
+
+# List stored encrypted secrets in ~/.lshell
+lshell> secret list
+
+# Decrypt and display a stored secret
+lshell> secret get GITHUB_TOKEN
+```
+
+### Environment Variables (`export`, `env`, `unset`)
+
+```bash
+# Define temporary environment variable for current session (in-memory)
+lshell> export VAR=VAL
+
+# Display or filter active environment variables
+lshell> env
+lshell> env PATH
+
+# Remove environment variables
+lshell> unset VAR
+```
+
+#### 💡 Difference: `export` vs `secret`
+
+| Feature | `export` | `secret` |
+| :--- | :--- | :--- |
+| **Persistence** | Session-only (lost when lshell closes) | **Persistent** (saved to `~/.lshell`) |
+| **Security** | Plaintext in RAM | **Machine-bound encrypted** (`enc:...`) |
+| **Use Case** | Temporary flags, subshell variables | API Tokens (`GITHUB_TOKEN`), passwords |
+| **Scope** | Current process | Automatic reload on every lshell boot |
+
 ### Smart Directory Jump (`z`)
 
 ```bash
