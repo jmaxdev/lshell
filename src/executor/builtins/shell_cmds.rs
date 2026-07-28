@@ -757,6 +757,35 @@ fn theme_wizard(config: &mut Config) -> i32 {
         return 1;
     }
 
+    let styles = vec![
+        " Powerline (Solid block arrows)".to_string(),
+        " Rounded / Capsule (Pill blocks)".to_string(),
+        " Slanted / Diagonal (Angled blocks)".to_string(),
+        "🎨 Minimal / Inline (No background fill)".to_string(),
+        "📦 Brackets ([ Folder ] [ Branch ])".to_string(),
+        "⚡ Pure / Modern (Clean text prompt)".to_string(),
+    ];
+    let style_idx = choice_single("Select Theme Design / Style", &styles, 0).unwrap_or(0);
+    let chosen_style = match style_idx {
+        1 => "rounded",
+        2 => "slanted",
+        3 => "minimal",
+        4 => "brackets",
+        5 => "pure",
+        _ => "powerline",
+    };
+
+    let line_layouts = vec![
+        "↵ Two lines (Segments on top, prompt symbol on line 2)".to_string(),
+        "➔ Single line (All on one line)".to_string(),
+    ];
+    let layout_idx = choice_single("Select Line Layout", &line_layouts, 0).unwrap_or(0);
+    let chosen_layout = if layout_idx == 1 {
+        "single_line"
+    } else {
+        "double_line"
+    };
+
     let color_palette = vec![
         ("Dark Gray (236)".to_string(), 236),
         ("Blue (31)".to_string(), 31),
@@ -801,6 +830,8 @@ fn theme_wizard(config: &mut Config) -> i32 {
 
     let custom = CustomTheme {
         name: name.clone(),
+        style: chosen_style.to_string(),
+        line_layout: chosen_layout.to_string(),
         path_fg: color_palette[path_fg_idx].1,
         path_bg: color_palette[path_bg_idx].1,
         git_fg: color_palette[git_fg_idx].1,

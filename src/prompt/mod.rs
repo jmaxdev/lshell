@@ -404,13 +404,19 @@ impl PromptBuilder {
         }
 
         let renderer = PowerlineRenderer::new(custom.use_powerline);
-        let mut prompt = renderer.render(&segments);
-        prompt.push('\n');
+        let mut prompt = renderer.render_styled(&segments, &custom.style);
         let symbol = custom
             .prompt_symbol
             .as_deref()
             .unwrap_or(&config.prompt_symbol);
-        prompt.push_str(symbol);
+
+        if custom.line_layout == "single_line" {
+            prompt.push(' ');
+            prompt.push_str(symbol);
+        } else {
+            prompt.push('\n');
+            prompt.push_str(symbol);
+        }
         prompt
     }
 }

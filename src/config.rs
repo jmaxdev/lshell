@@ -53,6 +53,10 @@ pub struct Config {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CustomTheme {
     pub name: String,
+    #[serde(default = "default_style")]
+    pub style: String,
+    #[serde(default = "default_line_layout")]
+    pub line_layout: String,
     pub path_fg: u8,
     pub path_bg: u8,
     pub git_fg: u8,
@@ -64,6 +68,14 @@ pub struct CustomTheme {
     #[serde(default = "default_true")]
     pub use_powerline: bool,
     pub prompt_symbol: Option<String>,
+}
+
+fn default_style() -> String {
+    "powerline".to_string()
+}
+
+fn default_line_layout() -> String {
+    "double_line".to_string()
 }
 
 fn default_theme() -> String {
@@ -172,6 +184,8 @@ mod tests {
         let mut cfg = Config::default();
         let custom = CustomTheme {
             name: "ocean".to_string(),
+            style: "rounded".to_string(),
+            line_layout: "double_line".to_string(),
             path_fg: 15,
             path_bg: 31,
             git_fg: 16,
