@@ -3,31 +3,38 @@ name: CI
 on:
   push:
     branches: [ main, master ]
-    tags:
-      - 'v*'
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  check:
-    name: Check & Build (${{ matrix.os }})
+  check-and-test:
+    name: Build & Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [windows-latest, ubuntu-latest, macos-latest]
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
+      - uses: actions/checkout@v4
+      
+      - name: Setup Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
 
-      - name: Run Cargo Check
-        run: cargo check --all-targets
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
 
-      - name: Run Cargo Build
+      - name: Check Code Format
+        run: cargo fmt --check
+
+      - name: Run Clippy Linter
+        run: cargo clippy -- -D warnings
+
+      - name: Build project
         run: cargo build --verbose
+
+      - name: Run Unit Tests
+        run: cargo test --verbose

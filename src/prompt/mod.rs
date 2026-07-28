@@ -14,6 +14,8 @@ impl PromptBuilder {
             "agnoster" => Self::build_agnoster(last_exit_code, config),
             "nord" => Self::build_nord(last_exit_code, config),
             "dracula" => Self::build_dracula(last_exit_code, config),
+            "catppuccin" => Self::build_catppuccin(last_exit_code, config),
+            "tokyonight" | "tokyo-night" => Self::build_tokyonight(last_exit_code, config),
             _ => Self::build_minimal(last_exit_code, config),
         }
     }
@@ -175,6 +177,100 @@ impl PromptBuilder {
                 format!(" ✘ {} ", last_exit_code),
                 Color::AnsiValue(15),
                 Color::AnsiValue(203),
+            ));
+        }
+
+        let renderer = PowerlineRenderer::new(config.use_powerline_symbols);
+        let mut prompt = renderer.render(&segments);
+        prompt.push_str("\n");
+        prompt.push_str(&config.prompt_symbol);
+        prompt
+    }
+
+    fn build_catppuccin(last_exit_code: i32, config: &Config) -> String {
+        let mut segments = Vec::new();
+        let current_dir = env::current_dir().unwrap_or_else(|_| Path::new(".").to_path_buf());
+        let formatted_path = format_path(&current_dir);
+
+        segments.push(Segment::new(
+            format!("  {} ", formatted_path),
+            Color::AnsiValue(16),
+            Color::AnsiValue(111),
+        ));
+
+        if config.show_dev_badge {
+            if let Some((badge_icon, _)) = detect_dev_badge(&current_dir) {
+                segments.push(Segment::new(
+                    format!(" {} ", badge_icon),
+                    Color::AnsiValue(16),
+                    Color::AnsiValue(219),
+                ));
+            }
+        }
+
+        if config.show_git {
+            if let Some(git) = GitInfo::get(&current_dir) {
+                let git_str = format_git_string(&git);
+                segments.push(Segment::new(
+                    format!("  {} ", git_str),
+                    Color::AnsiValue(16),
+                    Color::AnsiValue(150),
+                ));
+            }
+        }
+
+        if last_exit_code != 0 {
+            segments.push(Segment::new(
+                format!(" ✘ {} ", last_exit_code),
+                Color::AnsiValue(15),
+                Color::AnsiValue(210),
+            ));
+        }
+
+        let renderer = PowerlineRenderer::new(config.use_powerline_symbols);
+        let mut prompt = renderer.render(&segments);
+        prompt.push_str("\n");
+        prompt.push_str(&config.prompt_symbol);
+        prompt
+    }
+
+    fn build_tokyonight(last_exit_code: i32, config: &Config) -> String {
+        let mut segments = Vec::new();
+        let current_dir = env::current_dir().unwrap_or_else(|_| Path::new(".").to_path_buf());
+        let formatted_path = format_path(&current_dir);
+
+        segments.push(Segment::new(
+            format!("  {} ", formatted_path),
+            Color::AnsiValue(15),
+            Color::AnsiValue(62),
+        ));
+
+        if config.show_dev_badge {
+            if let Some((badge_icon, _)) = detect_dev_badge(&current_dir) {
+                segments.push(Segment::new(
+                    format!(" {} ", badge_icon),
+                    Color::AnsiValue(16),
+                    Color::AnsiValue(117),
+                ));
+            }
+        }
+
+        if config.show_git {
+            if let Some(git) = GitInfo::get(&current_dir) {
+                let git_str = format_git_string(&git);
+                segments.push(Segment::new(
+                    format!("  {} ", git_str),
+                    Color::AnsiValue(16),
+                    Color::AnsiValue(120),
+                ));
+            }
+        }
+
+        if last_exit_code != 0 {
+            segments.push(Segment::new(
+                format!(" ✘ {} ", last_exit_code),
+                Color::AnsiValue(15),
+                Color::AnsiValue(204),
             ));
         }
 

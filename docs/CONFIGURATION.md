@@ -9,7 +9,7 @@
 Example configuration file:
 
 ```toml
-theme = "minimal"               # Available themes: "minimal", "agnoster", "nord", "dracula"
+theme = "minimal"               # Available themes: "minimal", "agnoster", "nord", "dracula", "catppuccin", "tokyonight"
 prompt_symbol = "$ "
 success_symbol = "○"
 error_symbol = "✖"
@@ -37,6 +37,8 @@ e = "edit"
 2. **`agnoster`**: Powerline segment-based prompt displaying user, folder, git branch, and error code.
 3. **`nord`**: Styled Powerline prompt using Nord color scheme (`#88C0D0`, `#81A1C1`).
 4. **`dracula`**: Styled Powerline prompt using Dracula color scheme (Purple `#BD93F9`, Pink `#FF79C6`, Green `#50FA7B`).
+5. **`catppuccin`**: Soft pastel palette theme with Sky Blue, Pink, and Light Green accents.
+6. **`tokyonight`**: Deep dark theme inspired by Tokyo Night with Neon Blue, Cyan, and Vibrant Green.
 
 ---
 

@@ -60,6 +60,18 @@ lshell> tree --file
 lshell> tree src --full --file
 ```
 
+### History Management (`history`)
+
+```bash
+# View command history list with indices
+lshell> history
+
+# Clear command history memory and delete ~/.lshell_history file
+lshell> history clean
+lshell> history clear
+lshell> history -c
+```
+
 ### Smart Directory Jump (`z`)
 
 ```bash
@@ -93,3 +105,20 @@ lshell> usage
 # Benchmark cargo check duration
 lshell> bench cargo check
 ```
+
+---
+
+## 🔀 Pipelines, Operators & Redirections
+
+`lshell` supports native shell pipeline chained execution, logical operators, and file redirections:
+
+| Feature | Syntax | Example | Description |
+| :--- | :--- | :--- | :--- |
+| **Pipeline** | `cmd1 \| cmd2` | `ls \| search Cargo` | Connects stdout of `cmd1` to stdin of `cmd2`. |
+| **Logical AND** | `cmd1 && cmd2` | `cargo check && cargo run` | Executes `cmd2` only if `cmd1` succeeds (exit code 0). |
+| **Logical OR** | `cmd1 \|\| cmd2` | `cargo test \|\| echo "Tests failed"` | Executes `cmd2` only if `cmd1` fails (non-zero exit code). |
+| **Sequential** | `cmd1 ; cmd2` | `cls ; sys` | Executes `cmd1` followed by `cmd2` sequentially. |
+| **Output Write** | `cmd > file` | `tree > tree_out.txt` | Overwrites `file` with the stdout of `cmd`. |
+| **Output Append** | `cmd >> file` | `echo "log entry" >> log.txt` | Appends stdout of `cmd` to `file`. |
+| **Input Read** | `cmd < file` | `cat < input.txt` | Redirects `file` contents into stdin of `cmd`. |
+
