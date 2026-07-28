@@ -59,14 +59,13 @@ fn main() {
         }
     }
 
-    let mut config = Config::load();
     Config::save_default();
-
     let mut executor = Executor::new();
     executor.check_update_banner();
     let mut last_exit_code = 0;
 
     loop {
+        let mut config = Config::load();
         let prompt_str = PromptBuilder::build(last_exit_code, &config);
 
         match LineEditor::read_line(&prompt_str, executor.get_history(), &config) {

@@ -1,6 +1,6 @@
 [package]
 name = "lshell"
-version = "1.0.6"
+version = "1.0.7"
 edition = "2021"
 description = "A fast and feature-rich shell written in Rust" 
 authors = ["jmaxdev"]
