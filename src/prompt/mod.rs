@@ -416,25 +416,7 @@ impl PromptBuilder {
 }
 
 fn format_git_string(git: &GitInfo) -> String {
-    if !git.is_dirty {
-        git.branch.clone()
-    } else {
-        let mut counts = Vec::new();
-        if git.staged > 0 {
-            counts.push(format!("+{}", git.staged));
-        }
-        if git.unstaged > 0 {
-            counts.push(format!("~{}", git.unstaged));
-        }
-        if git.untracked > 0 {
-            counts.push(format!("?{}", git.untracked));
-        }
-        if counts.is_empty() {
-            format!("{}*", git.branch)
-        } else {
-            format!("{}* {}", git.branch, counts.join(" "))
-        }
-    }
+    git.branch.clone()
 }
 
 fn detect_dev_badge(dir: &Path) -> Option<(&'static str, u8)> {
