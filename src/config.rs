@@ -45,6 +45,25 @@ pub struct Config {
 
     #[serde(default)]
     pub env: HashMap<String, String>,
+
+    #[serde(default)]
+    pub custom_themes: HashMap<String, CustomTheme>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CustomTheme {
+    pub name: String,
+    pub path_fg: u8,
+    pub path_bg: u8,
+    pub git_fg: u8,
+    pub git_bg: u8,
+    pub badge_fg: u8,
+    pub badge_bg: u8,
+    pub user_fg: Option<u8>,
+    pub user_bg: Option<u8>,
+    #[serde(default = "default_true")]
+    pub use_powerline: bool,
+    pub prompt_symbol: Option<String>,
 }
 
 fn default_theme() -> String {
@@ -98,6 +117,7 @@ impl Default for Config {
             tree_max_depth: 3,
             aliases,
             env: HashMap::new(),
+            custom_themes: HashMap::new(),
         }
     }
 }
@@ -140,5 +160,39 @@ impl Config {
                 default_cfg.save();
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_custom_theme_config() {
+        let mut cfg = Config::default();
+        let custom = CustomTheme {
+            name: "ocean".to_string(),
+            path_fg: 15,
+            path_bg: 31,
+            git_fg: 16,
+            git_bg: 84,
+            badge_fg: 16,
+            badge_bg: 117,
+            user_fg: None,
+            user_bg: None,
+            use_powerline: true,
+            prompt_symbol: Some("❯ ".to_string()),
+        };
+        cfg.custom_themes.insert("ocean".to_string(), custom);
+        cfg.theme = "ocean".to_string();
+
+        let toml_str = toml::to_string(&cfg).unwrap();
+        let loaded: Config = toml::from_str(&toml_str).unwrap();
+
+        assert_eq!(loaded.theme, "ocean");
+        assert!(loaded.custom_themes.contains_key("ocean"));
+        let ocean = loaded.custom_themes.get("ocean").unwrap();
+        assert_eq!(ocean.path_bg, 31);
+        assert_eq!(ocean.prompt_symbol.as_deref(), Some("❯ "));
     }
 }

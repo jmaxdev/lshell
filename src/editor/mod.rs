@@ -1,3 +1,6 @@
+pub mod interactive;
+pub use interactive::{choice_multi, choice_single, input_text};
+
 use crate::config::Config;
 use crossterm::{
     cursor::MoveToColumn,

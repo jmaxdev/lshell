@@ -1,4 +1,5 @@
-use crate::config::Config;
+use crate::config::{Config, CustomTheme};
+use crate::editor::{choice_multi, choice_single, input_text};
 use crate::ledit::LeditEditor;
 use crossterm::style::{Attribute, Color, ResetColor, SetAttribute, SetForegroundColor};
 use std::collections::HashMap;
@@ -549,6 +550,11 @@ pub fn builtin_help() -> i32 {
         ResetColor
     );
     println!(
+        "   {}theme [cmd]{}    Theme manager (list, set, create wizard, delete)",
+        SetForegroundColor(Color::AnsiValue(78)),
+        ResetColor
+    );
+    println!(
         "   {}help{}           Display this help guide",
         SetForegroundColor(Color::AnsiValue(78)),
         ResetColor
@@ -576,4 +582,277 @@ pub fn builtin_edit(args: &[String]) -> i32 {
             1
         }
     }
+}
+
+pub fn builtin_theme(args: &[String], config: &mut Config) -> i32 {
+    let builtin_themes = vec![
+        "minimal",
+        "nord",
+        "dracula",
+        "catppuccin",
+        "tokyonight",
+        "agnoster",
+    ];
+
+    if args.is_empty() {
+        let menu_options = vec![
+            "🎨 Select active theme".to_string(),
+            "➕ Create custom theme (Wizard)".to_string(),
+            "📋 List all themes".to_string(),
+            "🗑️ Delete a custom theme".to_string(),
+            "❌ Exit".to_string(),
+        ];
+        match choice_single("LSHELL Theme Manager", &menu_options, 0) {
+            Ok(0) => {
+                let mut all_themes: Vec<String> =
+                    builtin_themes.iter().map(|s| s.to_string()).collect();
+                for k in config.custom_themes.keys() {
+                    all_themes.push(k.clone());
+                }
+                let current_idx = all_themes
+                    .iter()
+                    .position(|t| t == &config.theme)
+                    .unwrap_or(0);
+                if let Ok(idx) = choice_single("Select Theme", &all_themes, current_idx) {
+                    config.theme = all_themes[idx].clone();
+                    config.save();
+                    println!(
+                        " {}{}Theme updated to: {}{}",
+                        SetAttribute(Attribute::Bold),
+                        SetForegroundColor(Color::AnsiValue(78)),
+                        config.theme,
+                        ResetColor
+                    );
+                }
+                return 0;
+            }
+            Ok(1) => return theme_wizard(config),
+            Ok(2) => return theme_list(builtin_themes, config),
+            Ok(3) => return theme_delete_interactive(config),
+            _ => return 0,
+        }
+    }
+
+    match args[0].to_lowercase().as_str() {
+        "list" | "ls" => theme_list(builtin_themes, config),
+        "set" | "use" => {
+            if args.len() < 2 {
+                eprintln!("lshell: theme set: usage: theme set <theme_name>");
+                return 1;
+            }
+            let name = &args[1];
+            if builtin_themes.contains(&name.as_str()) || config.custom_themes.contains_key(name) {
+                config.theme = name.to_string();
+                config.save();
+                println!(
+                    " {}{}Theme updated to: {}{}",
+                    SetAttribute(Attribute::Bold),
+                    SetForegroundColor(Color::AnsiValue(78)),
+                    config.theme,
+                    ResetColor
+                );
+                0
+            } else {
+                eprintln!("lshell: theme set: unknown theme '{}'. Use 'theme list' to see available themes.", name);
+                1
+            }
+        }
+        "create" | "wizard" | "new" => theme_wizard(config),
+        "delete" | "rm" | "del" => {
+            if args.len() < 2 {
+                eprintln!("lshell: theme delete: usage: theme delete <theme_name>");
+                return 1;
+            }
+            let name = &args[1];
+            if config.custom_themes.remove(name).is_some() {
+                if config.theme == *name {
+                    config.theme = "minimal".to_string();
+                }
+                config.save();
+                println!(
+                    " {}{}Custom theme '{}' deleted successfully.{}",
+                    SetAttribute(Attribute::Bold),
+                    SetForegroundColor(Color::AnsiValue(78)),
+                    name,
+                    ResetColor
+                );
+                0
+            } else {
+                eprintln!("lshell: theme delete: custom theme '{}' not found.", name);
+                1
+            }
+        }
+        _ => {
+            eprintln!("lshell: theme: unknown command. Usage: theme [list | set <name> | create | delete <name>]");
+            1
+        }
+    }
+}
+
+fn theme_list(builtin_themes: Vec<&str>, config: &Config) -> i32 {
+    println!(
+        "\n {}{}Available Themes:{}",
+        SetAttribute(Attribute::Bold),
+        SetForegroundColor(Color::AnsiValue(75)),
+        ResetColor
+    );
+    println!(
+        "   {}Built-in themes:{}",
+        SetAttribute(Attribute::Bold),
+        ResetColor
+    );
+    for t in &builtin_themes {
+        if *t == config.theme {
+            println!(
+                "     * {}{}{} (active)",
+                SetForegroundColor(Color::AnsiValue(78)),
+                t,
+                ResetColor
+            );
+        } else {
+            println!("       {}", t);
+        }
+    }
+
+    if !config.custom_themes.is_empty() {
+        println!(
+            "\n   {}Custom themes:{}",
+            SetAttribute(Attribute::Bold),
+            ResetColor
+        );
+        let mut keys: Vec<_> = config.custom_themes.keys().collect();
+        keys.sort();
+        for k in keys {
+            if *k == config.theme {
+                println!(
+                    "     * {}{}{} (active)",
+                    SetForegroundColor(Color::AnsiValue(78)),
+                    k,
+                    ResetColor
+                );
+            } else {
+                println!("       {}", k);
+            }
+        }
+    }
+    println!();
+    0
+}
+
+fn theme_wizard(config: &mut Config) -> i32 {
+    println!(
+        "\n {}{}=== Custom Theme Wizard ==={}",
+        SetAttribute(Attribute::Bold),
+        SetForegroundColor(Color::AnsiValue(220)),
+        ResetColor
+    );
+
+    let name = match input_text("Enter name for your custom theme", Some("mytheme")) {
+        Ok(val) => val.trim().to_string(),
+        Err(_) => return 1,
+    };
+
+    if name.is_empty() {
+        eprintln!("lshell: theme wizard: invalid theme name.");
+        return 1;
+    }
+
+    let color_palette = vec![
+        ("Dark Gray (236)".to_string(), 236),
+        ("Blue (31)".to_string(), 31),
+        ("Cyan (117)".to_string(), 117),
+        ("Green (84)".to_string(), 84),
+        ("Purple (141)".to_string(), 141),
+        ("Magenta (213)".to_string(), 213),
+        ("Yellow (220)".to_string(), 220),
+        ("Orange (208)".to_string(), 208),
+        ("Red (203)".to_string(), 203),
+        ("Light Gray (245)".to_string(), 245),
+        ("White (15)".to_string(), 15),
+        ("Black (16)".to_string(), 16),
+    ];
+    let color_names: Vec<String> = color_palette.iter().map(|(n, _)| n.clone()).collect();
+
+    let path_bg_idx = choice_single("Select Path Background Color", &color_names, 1).unwrap_or(1);
+    let path_fg_idx = choice_single("Select Path Text Color", &color_names, 10).unwrap_or(10);
+
+    let git_bg_idx = choice_single("Select Git Background Color", &color_names, 3).unwrap_or(3);
+    let git_fg_idx = choice_single("Select Git Text Color", &color_names, 11).unwrap_or(11);
+
+    let badge_bg_idx = choice_single("Select Badge Background Color", &color_names, 6).unwrap_or(6);
+    let badge_fg_idx = choice_single("Select Badge Text Color", &color_names, 11).unwrap_or(11);
+
+    let opts = vec![
+        "Enable Username Segment".to_string(),
+        "Use Powerline Arrow Symbols ()".to_string(),
+    ];
+    let selected_opts = choice_multi("Theme Features", &opts, &[1]).unwrap_or_else(|_| vec![1]);
+
+    let enable_user = selected_opts.contains(&0);
+    let use_powerline = selected_opts.contains(&1);
+
+    let (user_fg, user_bg) = if enable_user {
+        (Some(15), Some(236))
+    } else {
+        (None, None)
+    };
+
+    let prompt_sym = input_text("Enter prompt symbol", Some(&config.prompt_symbol)).ok();
+
+    let custom = CustomTheme {
+        name: name.clone(),
+        path_fg: color_palette[path_fg_idx].1,
+        path_bg: color_palette[path_bg_idx].1,
+        git_fg: color_palette[git_fg_idx].1,
+        git_bg: color_palette[git_bg_idx].1,
+        badge_fg: color_palette[badge_fg_idx].1,
+        badge_bg: color_palette[badge_bg_idx].1,
+        user_fg,
+        user_bg,
+        use_powerline,
+        prompt_symbol: prompt_sym,
+    };
+
+    config.custom_themes.insert(name.clone(), custom);
+    config.theme = name.clone();
+    config.save();
+
+    println!(
+        "\n {}{}✨ Custom theme '{}' created and activated!{}",
+        SetAttribute(Attribute::Bold),
+        SetForegroundColor(Color::AnsiValue(78)),
+        name,
+        ResetColor
+    );
+    0
+}
+
+fn theme_delete_interactive(config: &mut Config) -> i32 {
+    if config.custom_themes.is_empty() {
+        println!(
+            " {}{}No custom themes found to delete.{}",
+            SetAttribute(Attribute::Bold),
+            SetForegroundColor(Color::AnsiValue(208)),
+            ResetColor
+        );
+        return 0;
+    }
+
+    let custom_keys: Vec<String> = config.custom_themes.keys().cloned().collect();
+    if let Ok(idx) = choice_single("Select Custom Theme to Delete", &custom_keys, 0) {
+        let name = &custom_keys[idx];
+        config.custom_themes.remove(name);
+        if config.theme == *name {
+            config.theme = "minimal".to_string();
+        }
+        config.save();
+        println!(
+            " {}{}Custom theme '{}' deleted. Active theme set to 'minimal'.{}",
+            SetAttribute(Attribute::Bold),
+            SetForegroundColor(Color::AnsiValue(78)),
+            name,
+            ResetColor
+        );
+    }
+    0
 }

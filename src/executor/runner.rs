@@ -256,6 +256,7 @@ pub fn is_builtin(cmd: &str) -> bool {
             | "copy"
             | "mv"
             | "move"
+            | "theme"
             | "exit"
             | "quit"
             | ".."
@@ -279,6 +280,7 @@ pub fn run_builtin(
         "...." => fs_cmds::builtin_cd(prev_dir, &["../../..".to_string()]),
         "z" | "jump" => shell_cmds::builtin_z(prev_dir, args),
         "alias" => shell_cmds::builtin_alias(args, config),
+        "theme" => shell_cmds::builtin_theme(args, config),
         "search" | "find" => fs_cmds::builtin_search(args),
         "usage" | "du" => fs_cmds::builtin_usage(args),
         "top" | "ps" => sys_cmds::builtin_top(),
