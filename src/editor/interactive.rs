@@ -51,20 +51,19 @@ pub fn input_text(
                     queue!(stdout, Print(c))?;
                     stdout.flush()?;
                 }
-                KeyCode::Backspace
-                    if !buf.is_empty() => {
-                        buf.pop();
-                        queue!(stdout, MoveToColumn(0), Clear(ClearType::UntilNewLine))?;
-                        queue!(
-                            stdout,
-                            SetAttribute(Attribute::Bold),
-                            SetForegroundColor(Color::AnsiValue(75)),
-                            Print(&display_prompt),
-                            ResetColor,
-                            Print(&buf)
-                        )?;
-                        stdout.flush()?;
-                    }
+                KeyCode::Backspace if !buf.is_empty() => {
+                    buf.pop();
+                    queue!(stdout, MoveToColumn(0), Clear(ClearType::UntilNewLine))?;
+                    queue!(
+                        stdout,
+                        SetAttribute(Attribute::Bold),
+                        SetForegroundColor(Color::AnsiValue(75)),
+                        Print(&display_prompt),
+                        ResetColor,
+                        Print(&buf)
+                    )?;
+                    stdout.flush()?;
+                }
                 KeyCode::Esc => {
                     execute!(stdout, Print("\r\n"))?;
                     disable_raw_mode()?;
