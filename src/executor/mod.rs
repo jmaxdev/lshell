@@ -83,6 +83,12 @@ impl Executor {
             "history" => self.builtin_history(),
             "help" => self.builtin_help(),
             "export" => self.builtin_export(args),
+            "env" => self.builtin_env(args),
+            "unset" => self.builtin_unset(args),
+            "head" => self.builtin_head(args),
+            "tail" => self.builtin_tail(args),
+            "cp" | "copy" => self.builtin_cp(args),
+            "mv" | "move" => self.builtin_mv(args),
             _ => self.run_external(&parts[0], args),
         };
 
@@ -1190,6 +1196,36 @@ impl Executor {
             ResetColor
         );
         println!(
+            "   {}head [-n N] <file>{} Print first N lines of file",
+            SetForegroundColor(Color::AnsiValue(78)),
+            ResetColor
+        );
+        println!(
+            "   {}tail [-n N] <file>{} Print last N lines of file",
+            SetForegroundColor(Color::AnsiValue(78)),
+            ResetColor
+        );
+        println!(
+            "   {}cp [-r] <src> <dst>{} Copy files or directories",
+            SetForegroundColor(Color::AnsiValue(78)),
+            ResetColor
+        );
+        println!(
+            "   {}mv <src> <dst>{}  Move or rename files or directories",
+            SetForegroundColor(Color::AnsiValue(78)),
+            ResetColor
+        );
+        println!(
+            "   {}env [query]{}    Display or filter environment variables",
+            SetForegroundColor(Color::AnsiValue(78)),
+            ResetColor
+        );
+        println!(
+            "   {}unset <VAR>{}    Remove environment variables",
+            SetForegroundColor(Color::AnsiValue(78)),
+            ResetColor
+        );
+        println!(
             "   {}export VAR=VAL{} Define environment variables",
             SetForegroundColor(Color::AnsiValue(78)),
             ResetColor
@@ -1249,6 +1285,198 @@ impl Executor {
         for arg in args {
             if let Some((key, val)) = arg.split_once('=') {
                 env::set_var(key, val);
+            }
+        }
+        0
+    }
+
+    fn builtin_env(&self, args: &[String]) -> i32 {
+        let filter = args.first().map(|s| s.to_lowercase());
+        for (key, val) in env::vars() {
+            if let Some(ref q) = filter {
+                if !key.to_lowercase().contains(q) && !val.to_lowercase().contains(q) {
+                    continue;
+                }
+            }
+            println!("{}={}", key, val);
+        }
+        0
+    }
+
+    fn builtin_unset(&self, args: &[String]) -> i32 {
+        if args.is_empty() {
+            eprintln!("lshell: unset: usage: unset <VAR1> [VAR2 ...]");
+            return 1;
+        }
+        for var in args {
+            env::remove_var(var);
+        }
+        0
+    }
+
+    fn builtin_head(&self, args: &[String]) -> i32 {
+        if args.is_empty() {
+            eprintln!("lshell: head: usage: head [-n <count>] <file>");
+            return 1;
+        }
+
+        let mut count: usize = 10;
+        let mut file_idx = 0;
+
+        if args.len() >= 3 && (args[0] == "-n" || args[0] == "--lines") {
+            if let Ok(c) = args[1].parse::<usize>() {
+                count = c;
+                file_idx = 2;
+            }
+        }
+
+        if file_idx >= args.len() {
+            eprintln!("lshell: head: missing file argument");
+            return 1;
+        }
+
+        let path = PathBuf::from(&args[file_idx]);
+        match fs::read_to_string(&path) {
+            Ok(content) => {
+                println!();
+                for (idx, line) in content.lines().take(count).enumerate() {
+                    println!(
+                        " {}{:4}{} | {}",
+                        SetForegroundColor(Color::AnsiValue(242)),
+                        idx + 1,
+                        ResetColor,
+                        line
+                    );
+                }
+                println!();
+                0
+            }
+            Err(e) => {
+                eprintln!("lshell: head: {}: {}", path.display(), e);
+                1
+            }
+        }
+    }
+
+    fn builtin_tail(&self, args: &[String]) -> i32 {
+        if args.is_empty() {
+            eprintln!("lshell: tail: usage: tail [-n <count>] <file>");
+            return 1;
+        }
+
+        let mut count: usize = 10;
+        let mut file_idx = 0;
+
+        if args.len() >= 3 && (args[0] == "-n" || args[0] == "--lines") {
+            if let Ok(c) = args[1].parse::<usize>() {
+                count = c;
+                file_idx = 2;
+            }
+        }
+
+        if file_idx >= args.len() {
+            eprintln!("lshell: tail: missing file argument");
+            return 1;
+        }
+
+        let path = PathBuf::from(&args[file_idx]);
+        match fs::read_to_string(&path) {
+            Ok(content) => {
+                let lines: Vec<&str> = content.lines().collect();
+                let skip_count = lines.len().saturating_sub(count);
+                println!();
+                for (idx, line) in lines.into_iter().skip(skip_count).enumerate() {
+                    println!(
+                        " {}{:4}{} | {}",
+                        SetForegroundColor(Color::AnsiValue(242)),
+                        skip_count + idx + 1,
+                        ResetColor,
+                        line
+                    );
+                }
+                println!();
+                0
+            }
+            Err(e) => {
+                eprintln!("lshell: tail: {}: {}", path.display(), e);
+                1
+            }
+        }
+    }
+
+    fn builtin_cp(&self, args: &[String]) -> i32 {
+        let filtered: Vec<&String> = args.iter().filter(|a| !a.starts_with('-')).collect();
+        if filtered.len() < 2 {
+            eprintln!("lshell: cp: usage: cp [-r] <src> <dest>");
+            return 1;
+        }
+
+        let src = PathBuf::from(filtered[0]);
+        let dest = PathBuf::from(filtered[1]);
+
+        if !src.exists() {
+            eprintln!("lshell: cp: cannot stat '{}': No such file or directory", src.display());
+            return 1;
+        }
+
+        if src.is_dir() {
+            let target = if dest.exists() && dest.is_dir() {
+                dest.join(src.file_name().unwrap_or_default())
+            } else {
+                dest
+            };
+            if let Err(e) = copy_dir_all(&src, &target) {
+                eprintln!("lshell: cp: error copying directory '{}': {}", src.display(), e);
+                return 1;
+            }
+        } else {
+            let target = if dest.exists() && dest.is_dir() {
+                dest.join(src.file_name().unwrap_or_default())
+            } else {
+                dest
+            };
+            if let Err(e) = fs::copy(&src, &target) {
+                eprintln!("lshell: cp: error copying file '{}': {}", src.display(), e);
+                return 1;
+            }
+        }
+        0
+    }
+
+    fn builtin_mv(&self, args: &[String]) -> i32 {
+        let filtered: Vec<&String> = args.iter().filter(|a| !a.starts_with('-')).collect();
+        if filtered.len() < 2 {
+            eprintln!("lshell: mv: usage: mv <src> <dest>");
+            return 1;
+        }
+
+        let src = PathBuf::from(filtered[0]);
+        let dest = PathBuf::from(filtered[1]);
+
+        if !src.exists() {
+            eprintln!("lshell: mv: cannot stat '{}': No such file or directory", src.display());
+            return 1;
+        }
+
+        let target = if dest.exists() && dest.is_dir() {
+            dest.join(src.file_name().unwrap_or_default())
+        } else {
+            dest
+        };
+
+        if fs::rename(&src, &target).is_err() {
+            if src.is_dir() {
+                if let Err(e) = copy_dir_all(&src, &target) {
+                    eprintln!("lshell: mv: {}", e);
+                    return 1;
+                }
+                let _ = fs::remove_dir_all(&src);
+            } else {
+                if let Err(e) = fs::copy(&src, &target) {
+                    eprintln!("lshell: mv: {}", e);
+                    return 1;
+                }
+                let _ = fs::remove_file(&src);
             }
         }
         0
@@ -1581,6 +1809,21 @@ fn parse_command_line(input: &str) -> Vec<String> {
     args
 }
 
+fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
+    fs::create_dir_all(dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        let dst_path = dst.join(entry.file_name());
+        if ty.is_dir() {
+            copy_dir_all(&entry.path(), &dst_path)?;
+        } else {
+            fs::copy(entry.path(), dst_path)?;
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1646,5 +1889,72 @@ mod tests {
         let res = executor.builtin_export(&["MY_VAR=TEST123".to_string()]);
         assert_eq!(res, 0);
         assert_eq!(env::var("MY_VAR").unwrap(), "TEST123");
+    }
+
+    #[test]
+    fn test_head_and_tail() {
+        let executor = Executor::new();
+        let mut temp_path = env::temp_dir();
+        temp_path.push(format!("lshell_head_tail_test_{}", std::process::id()));
+        let _ = fs::remove_dir_all(&temp_path);
+        fs::create_dir_all(&temp_path).unwrap();
+
+        let test_file = temp_path.join("lines.txt");
+        let lines_str = (1..=20)
+            .map(|i| format!("line {}", i))
+            .collect::<Vec<_>>()
+            .join("\n");
+        fs::write(&test_file, lines_str).unwrap();
+
+        let res_head = executor.builtin_head(&["-n".to_string(), "5".to_string(), test_file.to_string_lossy().to_string()]);
+        assert_eq!(res_head, 0);
+
+        let res_tail = executor.builtin_tail(&["-n".to_string(), "5".to_string(), test_file.to_string_lossy().to_string()]);
+        assert_eq!(res_tail, 0);
+
+        let _ = fs::remove_dir_all(&temp_path);
+    }
+
+    #[test]
+    fn test_env_and_unset() {
+        let executor = Executor::new();
+        let res_exp = executor.builtin_export(&["LSHELL_TEST_UNSET=12345".to_string()]);
+        assert_eq!(res_exp, 0);
+        assert_eq!(env::var("LSHELL_TEST_UNSET").unwrap(), "12345");
+
+        let res_env = executor.builtin_env(&["LSHELL_TEST_UNSET".to_string()]);
+        assert_eq!(res_env, 0);
+
+        let res_unset = executor.builtin_unset(&["LSHELL_TEST_UNSET".to_string()]);
+        assert_eq!(res_unset, 0);
+        assert!(env::var("LSHELL_TEST_UNSET").is_err());
+    }
+
+    #[test]
+    fn test_cp_and_mv() {
+        let executor = Executor::new();
+        let mut temp_path = env::temp_dir();
+        temp_path.push(format!("lshell_cp_mv_test_{}", std::process::id()));
+        let _ = fs::remove_dir_all(&temp_path);
+        fs::create_dir_all(&temp_path).unwrap();
+
+        let src_file = temp_path.join("src.txt");
+        let cp_file = temp_path.join("cp.txt");
+        let mv_file = temp_path.join("mv.txt");
+
+        fs::write(&src_file, "copy test content").unwrap();
+
+        let res_cp = executor.builtin_cp(&[src_file.to_string_lossy().to_string(), cp_file.to_string_lossy().to_string()]);
+        assert_eq!(res_cp, 0);
+        assert!(cp_file.exists());
+        assert_eq!(fs::read_to_string(&cp_file).unwrap(), "copy test content");
+
+        let res_mv = executor.builtin_mv(&[cp_file.to_string_lossy().to_string(), mv_file.to_string_lossy().to_string()]);
+        assert_eq!(res_mv, 0);
+        assert!(!cp_file.exists());
+        assert!(mv_file.exists());
+        assert_eq!(fs::read_to_string(&mv_file).unwrap(), "copy test content");
+
+        let _ = fs::remove_dir_all(&temp_path);
     }
 }

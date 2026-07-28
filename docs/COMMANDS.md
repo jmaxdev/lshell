@@ -21,11 +21,17 @@
 | `sys` | `info` | Display stylized system information card. |
 | `version` | `--version`, `-v` | Print lshell version. |
 | `cat <file>` | `type` | Print line-numbered contents of a text file. |
+| `head <file>`| | Print first N lines of a text file (default 10, option `-n N`). |
+| `tail <file>`| | Print last N lines of a text file (default 10, option `-n N`). |
+| `cp <src> <dst>`| `copy` | Copy files or directories recursively. |
+| `mv <src> <dst>`| `move` | Move or rename files or directories. |
 | `edit <file>`| `ledit` | Launch the full-screen interactive TUI text editor. |
 | `touch <file>`| | Create one or more empty files. |
 | `mkdir <dir>`| | Create one or more directory paths recursively. |
 | `rm <path>` | `del` | Remove files or directories recursively. |
 | `export <K=V>`| | View or set environment variables (`export KEY=VALUE`). |
+| `env [query]` | | View or filter active environment variables. |
+| `unset <VAR>`| | Remove one or more environment variables. |
 | `which <cmd>`| `where` | Locate binary executable path in `PATH` or confirm built-in status. |
 | `history` | | Print indexed list of executed command history. |
 | `update` | `updater` | Check for and install the latest lshell release from GitHub Releases. |

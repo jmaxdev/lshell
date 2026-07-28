@@ -357,22 +357,47 @@ fn render_syntax_highlighted_line(
     stdout: &mut std::io::Stdout,
     line: &str,
 ) -> Result<(), std::io::Error> {
-    if line.trim().starts_with("//") || line.trim().starts_with('#') {
+    let trimmed = line.trim();
+    if trimmed.starts_with("//") || trimmed.starts_with('#') || trimmed.starts_with("<!--") {
         queue!(stdout, SetForegroundColor(Color::AnsiValue(243)), Print(line), ResetColor)?;
         return Ok(());
     }
 
+    if trimmed.starts_with('[') && trimmed.ends_with(']') {
+        queue!(
+            stdout,
+            SetForegroundColor(Color::AnsiValue(214)),
+            SetAttribute(Attribute::Bold),
+            Print(line),
+            ResetColor
+        )?;
+        return Ok(());
+    }
+
     let keywords = [
+        // Rust
         "fn", "pub", "let", "mut", "struct", "impl", "use", "match", "return", "if", "else",
-        "true", "false", "import", "export", "const", "function", "class", "package", "version",
-        "dependencies", "type", "mod",
+        "true", "false", "type", "mod", "crate", "enum", "trait", "where", "async", "await",
+        "loop", "while", "for", "in", "break", "continue", "self", "Self", "dyn", "ref", "static",
+        // Python
+        "def", "class", "import", "from", "as", "try", "except", "finally", "with", "raise",
+        "lambda", "is", "not", "and", "or", "None", "pass", "yield", "global", "nonlocal",
+        // JavaScript / TypeScript
+        "function", "const", "var", "interface", "export", "default", "extends", "implements",
+        "constructor", "typeof", "instanceof", "new", "delete", "void", "any", "string", "number",
+        "boolean", "null", "undefined",
+        // C / C++
+        "int", "char", "float", "double", "unsigned", "signed", "long", "short", "include",
+        "define", "namespace", "template", "typename", "public", "private", "protected",
+        // Configuration / Declarative
+        "package", "version", "dependencies", "description", "authors", "license", "scripts",
     ];
 
     let words = line.split_inclusive(|c: char| !c.is_alphanumeric() && c != '_');
     let mut in_string = false;
 
     for word in words {
-        if word.contains('"') || word.contains('\'') {
+        if word.contains('"') || word.contains('\'') || word.contains('`') {
             in_string = !in_string;
             queue!(stdout, SetForegroundColor(Color::AnsiValue(220)), Print(word), ResetColor)?;
             continue;
@@ -392,6 +417,8 @@ fn render_syntax_highlighted_line(
                 Print(word),
                 ResetColor
             )?;
+        } else if !clean.is_empty() && clean.chars().all(|c| c.is_ascii_digit()) {
+            queue!(stdout, SetForegroundColor(Color::AnsiValue(81)), Print(word), ResetColor)?;
         } else {
             queue!(stdout, SetForegroundColor(Color::AnsiValue(252)), Print(word), ResetColor)?;
         }

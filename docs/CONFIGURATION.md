@@ -49,6 +49,11 @@ When `show_dev_badge = true` is enabled in `~/.lshell`, `lshell` detects project
 - 🐍 `Python` (`pyproject.toml` / `requirements.txt`)
 - 🐳 `Docker` (`Dockerfile` / `docker-compose.yml`)
 - 🐹 `Go` (`go.mod`)
+- ☕ `Java` (`pom.xml` / `build.gradle` / `build.gradle.kts`)
+- 🐘 `PHP` (`composer.json`)
+- 💎 `Ruby` (`Gemfile`)
+- ⚡ `Zig` (`build.zig`)
+- 🛠️ `C/C++` (`CMakeLists.txt` / `Makefile`)
 
 ---
 

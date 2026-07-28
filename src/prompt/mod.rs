@@ -69,13 +69,12 @@ impl PromptBuilder {
 
         if config.show_git {
             if let Some(git) = GitInfo::get(&current_dir) {
-                let dirty_flag = if git.is_dirty { "*" } else { "" };
+                let git_str = format_git_string(&git);
                 let _ = write!(
                     out,
-                    "{}(\u{F418} {}{})",
+                    "{}(\u{F418} {})",
                     SetForegroundColor(Color::AnsiValue(210)),
-                    git.branch,
-                    dirty_flag
+                    git_str
                 );
             }
         }
@@ -115,9 +114,9 @@ impl PromptBuilder {
 
         if config.show_git {
             if let Some(git) = GitInfo::get(&current_dir) {
-                let dirty_flag = if git.is_dirty { "*" } else { "" };
+                let git_str = format_git_string(&git);
                 segments.push(Segment::new(
-                    format!("  {}{} ", git.branch, dirty_flag),
+                    format!("  {} ", git_str),
                     Color::AnsiValue(236),
                     Color::AnsiValue(150),
                 ));
@@ -162,9 +161,9 @@ impl PromptBuilder {
 
         if config.show_git {
             if let Some(git) = GitInfo::get(&current_dir) {
-                let dirty_flag = if git.is_dirty { "*" } else { "" };
+                let git_str = format_git_string(&git);
                 segments.push(Segment::new(
-                    format!("  {}{} ", git.branch, dirty_flag),
+                    format!("  {} ", git_str),
                     Color::AnsiValue(16),
                     Color::AnsiValue(84),
                 ));
@@ -216,9 +215,9 @@ impl PromptBuilder {
 
         if config.show_git {
             if let Some(git) = GitInfo::get(&current_dir) {
-                let dirty_flag = if git.is_dirty { "*" } else { "" };
+                let git_str = format_git_string(&git);
                 segments.push(Segment::new(
-                    format!("  {}{} ", git.branch, dirty_flag),
+                    format!("  {} ", git_str),
                     Color::AnsiValue(16),
                     if git.is_dirty {
                         Color::AnsiValue(214)
@@ -245,6 +244,28 @@ impl PromptBuilder {
     }
 }
 
+fn format_git_string(git: &GitInfo) -> String {
+    if !git.is_dirty {
+        git.branch.clone()
+    } else {
+        let mut counts = Vec::new();
+        if git.staged > 0 {
+            counts.push(format!("+{}", git.staged));
+        }
+        if git.unstaged > 0 {
+            counts.push(format!("~{}", git.unstaged));
+        }
+        if git.untracked > 0 {
+            counts.push(format!("?{}", git.untracked));
+        }
+        if counts.is_empty() {
+            format!("{}*", git.branch)
+        } else {
+            format!("{}* {}", git.branch, counts.join(" "))
+        }
+    }
+}
+
 fn detect_dev_badge(dir: &Path) -> Option<(&'static str, u8)> {
     if dir.join("Cargo.toml").exists() {
         Some(("🦀 Rust", 208))
@@ -256,6 +277,16 @@ fn detect_dev_badge(dir: &Path) -> Option<(&'static str, u8)> {
         Some(("🐳 Docker", 75))
     } else if dir.join("go.mod").exists() {
         Some(("🐹 Go", 81))
+    } else if dir.join("pom.xml").exists() || dir.join("build.gradle").exists() || dir.join("build.gradle.kts").exists() {
+        Some(("☕ Java", 172))
+    } else if dir.join("composer.json").exists() {
+        Some(("🐘 PHP", 141))
+    } else if dir.join("Gemfile").exists() {
+        Some(("💎 Ruby", 160))
+    } else if dir.join("build.zig").exists() {
+        Some(("⚡ Zig", 214))
+    } else if dir.join("CMakeLists.txt").exists() || dir.join("Makefile").exists() {
+        Some(("🛠️ C/C++", 110))
     } else {
         None
     }
@@ -273,3 +304,4 @@ fn format_path(path: &Path) -> String {
     }
     path.display().to_string()
 }
+
