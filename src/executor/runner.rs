@@ -134,33 +134,36 @@ fn run_single_command(
 
     for redir in &cmd_spec.redirections {
         match redir.kind {
-            RedirectionKind::Write => {
-                match File::create(&redir.target) {
-                    Ok(f) => redir_out_file = Some(f),
-                    Err(e) => {
-                        eprintln!("lshell: redirection error (write): {}: {}", redir.target, e);
-                        return 1;
-                    }
+            RedirectionKind::Write => match File::create(&redir.target) {
+                Ok(f) => redir_out_file = Some(f),
+                Err(e) => {
+                    eprintln!("lshell: redirection error (write): {}: {}", redir.target, e);
+                    return 1;
                 }
-            }
+            },
             RedirectionKind::Append => {
-                match OpenOptions::new().create(true).append(true).open(&redir.target) {
+                match OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(&redir.target)
+                {
                     Ok(f) => redir_out_file = Some(f),
                     Err(e) => {
-                        eprintln!("lshell: redirection error (append): {}: {}", redir.target, e);
+                        eprintln!(
+                            "lshell: redirection error (append): {}: {}",
+                            redir.target, e
+                        );
                         return 1;
                     }
                 }
             }
-            RedirectionKind::Read => {
-                match File::open(&redir.target) {
-                    Ok(f) => redir_in_file = Some(f),
-                    Err(e) => {
-                        eprintln!("lshell: redirection error (read): {}: {}", redir.target, e);
-                        return 1;
-                    }
+            RedirectionKind::Read => match File::open(&redir.target) {
+                Ok(f) => redir_in_file = Some(f),
+                Err(e) => {
+                    eprintln!("lshell: redirection error (read): {}: {}", redir.target, e);
+                    return 1;
                 }
-            }
+            },
         }
     }
 

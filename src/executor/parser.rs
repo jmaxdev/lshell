@@ -77,13 +77,13 @@ pub fn expand_env_vars(input: &str) -> String {
 #[derive(Debug, PartialEq, Clone)]
 enum Token {
     Word(String),
-    OpAnd,        // &&
-    OpOr,         // ||
-    OpSeq,        // ;
-    Pipe,         // |
-    RedirWrite,   // >
-    RedirAppend,  // >>
-    RedirRead,    // <
+    OpAnd,       // &&
+    OpOr,        // ||
+    OpSeq,       // ;
+    Pipe,        // |
+    RedirWrite,  // >
+    RedirAppend, // >>
+    RedirRead,   // <
 }
 
 fn tokenize(input: &str) -> Vec<Token> {
@@ -299,8 +299,14 @@ mod tests {
         let ast = parse_ast("cat file.txt | search test");
         assert_eq!(ast.jobs.len(), 1);
         assert_eq!(ast.jobs[0].pipeline.commands.len(), 2);
-        assert_eq!(ast.jobs[0].pipeline.commands[0].args, vec!["cat", "file.txt"]);
-        assert_eq!(ast.jobs[0].pipeline.commands[1].args, vec!["search", "test"]);
+        assert_eq!(
+            ast.jobs[0].pipeline.commands[0].args,
+            vec!["cat", "file.txt"]
+        );
+        assert_eq!(
+            ast.jobs[0].pipeline.commands[1].args,
+            vec!["search", "test"]
+        );
     }
 
     #[test]
@@ -316,7 +322,10 @@ mod tests {
     fn test_parse_redirections() {
         let ast = parse_ast("echo \"hello world\" > output.txt");
         assert_eq!(ast.jobs.len(), 1);
-        assert_eq!(ast.jobs[0].pipeline.commands[0].args, vec!["echo", "hello world"]);
+        assert_eq!(
+            ast.jobs[0].pipeline.commands[0].args,
+            vec!["echo", "hello world"]
+        );
         assert_eq!(
             ast.jobs[0].pipeline.commands[0].redirections,
             vec![Redirection {

@@ -1,6 +1,4 @@
-use crossterm::{
-    style::{Attribute, Color, ResetColor, SetAttribute, SetForegroundColor},
-};
+use crossterm::style::{Attribute, Color, ResetColor, SetAttribute, SetForegroundColor};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -144,7 +142,8 @@ pub fn builtin_tree(args: &[String]) -> i32 {
         }
     }
 
-    let target = target_path.unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+    let target =
+        target_path.unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
     let max_depth = if full { 3 } else { 1 };
 
     println!(
@@ -312,7 +311,10 @@ pub fn builtin_cp(args: &[String]) -> i32 {
     let dest = PathBuf::from(filtered[1]);
 
     if !src.exists() {
-        eprintln!("lshell: cp: cannot stat '{}': No such file or directory", src.display());
+        eprintln!(
+            "lshell: cp: cannot stat '{}': No such file or directory",
+            src.display()
+        );
         return 1;
     }
 
@@ -323,7 +325,11 @@ pub fn builtin_cp(args: &[String]) -> i32 {
             dest
         };
         if let Err(e) = copy_dir_all(&src, &target) {
-            eprintln!("lshell: cp: error copying directory '{}': {}", src.display(), e);
+            eprintln!(
+                "lshell: cp: error copying directory '{}': {}",
+                src.display(),
+                e
+            );
             return 1;
         }
     } else {
@@ -351,7 +357,10 @@ pub fn builtin_mv(args: &[String]) -> i32 {
     let dest = PathBuf::from(filtered[1]);
 
     if !src.exists() {
-        eprintln!("lshell: mv: cannot stat '{}': No such file or directory", src.display());
+        eprintln!(
+            "lshell: mv: cannot stat '{}': No such file or directory",
+            src.display()
+        );
         return 1;
     }
 
@@ -605,19 +614,36 @@ pub fn get_file_style(name: &str, is_dir: bool) -> (&'static str, Color, bool) {
         ("\u{E627}", Color::AnsiValue(80), false)
     } else if lower.ends_with(".java") || lower.ends_with(".kt") {
         ("\u{E738}", Color::AnsiValue(166), false)
-    } else if lower.ends_with(".toml") || lower.ends_with(".json") || lower.ends_with(".yaml") || lower.ends_with(".yml") {
+    } else if lower.ends_with(".toml")
+        || lower.ends_with(".json")
+        || lower.ends_with(".yaml")
+        || lower.ends_with(".yml")
+    {
         ("\u{E615}", Color::AnsiValue(220), false)
     } else if lower.ends_with(".lock") {
         ("\u{F023}", Color::AnsiValue(245), false)
     } else if lower.starts_with('.') {
         ("\u{F418}", Color::AnsiValue(242), false)
-    } else if lower.ends_with(".exe") || lower.ends_with(".bat") || lower.ends_with(".cmd") || lower.ends_with(".sh") {
+    } else if lower.ends_with(".exe")
+        || lower.ends_with(".bat")
+        || lower.ends_with(".cmd")
+        || lower.ends_with(".sh")
+    {
         ("\u{F0E7}", Color::AnsiValue(78), true)
     } else if lower.ends_with(".md") || lower.ends_with(".txt") {
         ("\u{E609}", Color::AnsiValue(111), false)
-    } else if lower.ends_with(".png") || lower.ends_with(".jpg") || lower.ends_with(".jpeg") || lower.ends_with(".svg") || lower.ends_with(".ico") {
+    } else if lower.ends_with(".png")
+        || lower.ends_with(".jpg")
+        || lower.ends_with(".jpeg")
+        || lower.ends_with(".svg")
+        || lower.ends_with(".ico")
+    {
         ("\u{F03E}", Color::AnsiValue(177), false)
-    } else if lower.ends_with(".zip") || lower.ends_with(".tar") || lower.ends_with(".gz") || lower.ends_with(".7z") {
+    } else if lower.ends_with(".zip")
+        || lower.ends_with(".tar")
+        || lower.ends_with(".gz")
+        || lower.ends_with(".7z")
+    {
         ("\u{F410}", Color::AnsiValue(172), false)
     } else {
         ("\u{F15B}", Color::AnsiValue(252), false)

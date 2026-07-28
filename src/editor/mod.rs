@@ -34,7 +34,9 @@ impl LineEditor {
                     continue;
                 }
 
-                let KeyEvent { code, modifiers, .. } = key_event;
+                let KeyEvent {
+                    code, modifiers, ..
+                } = key_event;
 
                 if code == KeyCode::Char('r') && modifiers.contains(KeyModifiers::CONTROL) {
                     search_mode = !search_mode;
@@ -52,7 +54,9 @@ impl LineEditor {
                         .rev()
                         .find(|cmd| {
                             let trimmed_cmd = cmd.trim();
-                            if !trimmed_cmd.to_lowercase().starts_with(&buffer.to_lowercase())
+                            if !trimmed_cmd
+                                .to_lowercase()
+                                .starts_with(&buffer.to_lowercase())
                                 || trimmed_cmd.eq_ignore_ascii_case(&buffer)
                                 || trimmed_cmd.eq_ignore_ascii_case(buffer.trim())
                             {
@@ -70,7 +74,9 @@ impl LineEditor {
                     match code {
                         KeyCode::Esc | KeyCode::Enter => {
                             if !search_query.is_empty() {
-                                if let Some(found) = history.iter().rev().find(|c| c.contains(&search_query)) {
+                                if let Some(found) =
+                                    history.iter().rev().find(|c| c.contains(&search_query))
+                                {
                                     buffer = found.clone();
                                     cursor_pos = buffer.len();
                                 }
@@ -208,7 +214,9 @@ impl LineEditor {
                         .rev()
                         .find(|cmd| {
                             let trimmed_cmd = cmd.trim();
-                            if !trimmed_cmd.to_lowercase().starts_with(&buffer.to_lowercase())
+                            if !trimmed_cmd
+                                .to_lowercase()
+                                .starts_with(&buffer.to_lowercase())
                                 || trimmed_cmd.eq_ignore_ascii_case(&buffer)
                                 || trimmed_cmd.eq_ignore_ascii_case(buffer.trim())
                             {
@@ -254,17 +262,32 @@ impl LineEditor {
                     if config.enable_syntax_highlighting {
                         let status = get_command_status(cmd_part);
                         let cmd_color = match status {
-                            CommandStatus::Valid => Color::AnsiValue(78),    // Green for exact valid command
-                            CommandStatus::Prefix => Color::AnsiValue(255),  // White for typing valid command prefix
+                            CommandStatus::Valid => Color::AnsiValue(78), // Green for exact valid command
+                            CommandStatus::Prefix => Color::AnsiValue(255), // White for typing valid command prefix
                             CommandStatus::Invalid => Color::AnsiValue(203), // Red for invalid command
                         };
 
-                        queue!(stdout, SetForegroundColor(cmd_color), Print(cmd_part), ResetColor)?;
+                        queue!(
+                            stdout,
+                            SetForegroundColor(cmd_color),
+                            Print(cmd_part),
+                            ResetColor
+                        )?;
                     } else {
-                        queue!(stdout, SetForegroundColor(Color::AnsiValue(255)), Print(cmd_part), ResetColor)?;
+                        queue!(
+                            stdout,
+                            SetForegroundColor(Color::AnsiValue(255)),
+                            Print(cmd_part),
+                            ResetColor
+                        )?;
                     }
 
-                    queue!(stdout, SetForegroundColor(Color::AnsiValue(252)), Print(rest_part), ResetColor)?;
+                    queue!(
+                        stdout,
+                        SetForegroundColor(Color::AnsiValue(252)),
+                        Print(rest_part),
+                        ResetColor
+                    )?;
 
                     if let Some(ref suggest) = autosuggestion {
                         queue!(
@@ -355,11 +378,56 @@ pub fn get_command_status(cmd: &str) -> CommandStatus {
     let lower = cmd.to_lowercase();
 
     let builtins = [
-        "cd", "pwd", "ls", "dir", "cat", "type", "edit", "ledit", "touch",
-        "mkdir", "rm", "del", "which", "where", "clear", "cls", "history", "help", "exit", "quit",
-        "export", "..", "...", "....", "tree", "sys", "info", "update", "updater", "install-wt",
-        "wt-install", "install-vscode", "vscode-install", "install", "z", "jump", "alias",
-        "search", "find", "usage", "du", "bench", "time", "top", "ps", "version", "head", "tail", "cp", "mv"
+        "cd",
+        "pwd",
+        "ls",
+        "dir",
+        "cat",
+        "type",
+        "edit",
+        "ledit",
+        "touch",
+        "mkdir",
+        "rm",
+        "del",
+        "which",
+        "where",
+        "clear",
+        "cls",
+        "history",
+        "help",
+        "exit",
+        "quit",
+        "export",
+        "..",
+        "...",
+        "....",
+        "tree",
+        "sys",
+        "info",
+        "update",
+        "updater",
+        "install-wt",
+        "wt-install",
+        "install-vscode",
+        "vscode-install",
+        "install",
+        "z",
+        "jump",
+        "alias",
+        "search",
+        "find",
+        "usage",
+        "du",
+        "bench",
+        "time",
+        "top",
+        "ps",
+        "version",
+        "head",
+        "tail",
+        "cp",
+        "mv",
     ];
 
     if builtins.contains(&lower.as_str()) {
@@ -407,11 +475,58 @@ fn autocomplete_command_or_file(input: &str) -> Option<String> {
     if parts.len() == 1 && !ends_with_space {
         let query = parts[0].to_lowercase();
         let builtins = [
-            "cd", "pwd", "ls", "dir", "cat", "type", "edit", "ledit", "touch",
-            "mkdir", "rm", "del", "which", "where", "clear", "cls", "history", "help", "exit", "quit",
-            "export", "tree", "sys", "info", "update", "updater", "install-wt", "install-vscode", "install",
-            "cargo", "git", "npm", "npx", "node", "python", "docker", "z", "jump", "alias", "search",
-            "find", "usage", "du", "bench", "time", "top", "ps", "version", "head", "tail", "cp", "mv"
+            "cd",
+            "pwd",
+            "ls",
+            "dir",
+            "cat",
+            "type",
+            "edit",
+            "ledit",
+            "touch",
+            "mkdir",
+            "rm",
+            "del",
+            "which",
+            "where",
+            "clear",
+            "cls",
+            "history",
+            "help",
+            "exit",
+            "quit",
+            "export",
+            "tree",
+            "sys",
+            "info",
+            "update",
+            "updater",
+            "install-wt",
+            "install-vscode",
+            "install",
+            "cargo",
+            "git",
+            "npm",
+            "npx",
+            "node",
+            "python",
+            "docker",
+            "z",
+            "jump",
+            "alias",
+            "search",
+            "find",
+            "usage",
+            "du",
+            "bench",
+            "time",
+            "top",
+            "ps",
+            "version",
+            "head",
+            "tail",
+            "cp",
+            "mv",
         ];
         for b in builtins {
             if b.starts_with(&query) && b != query {
@@ -439,8 +554,13 @@ fn autocomplete_command_or_file(input: &str) -> Option<String> {
         };
 
         let subcommands: &[&str] = match cmd.as_str() {
-            "git" => &["status", "commit", "push", "pull", "checkout", "branch", "diff", "log", "add", "clone", "merge", "rebase"],
-            "cargo" => &["build", "check", "test", "run", "clippy", "fmt", "add", "update", "clean"],
+            "git" => &[
+                "status", "commit", "push", "pull", "checkout", "branch", "diff", "log", "add",
+                "clone", "merge", "rebase",
+            ],
+            "cargo" => &[
+                "build", "check", "test", "run", "clippy", "fmt", "add", "update", "clean",
+            ],
             "npm" => &["start", "run", "test", "install", "build", "dev"],
             "docker" => &["ps", "run", "build", "exec", "stop", "images", "compose"],
             _ => &[],
@@ -508,16 +628,34 @@ mod tests {
 
     #[test]
     fn test_autocomplete_command_name() {
-        assert_eq!(autocomplete_command_or_file("car"), Some("cargo".to_string()));
-        assert_eq!(autocomplete_command_or_file("searc"), Some("search".to_string()));
-        assert_eq!(autocomplete_command_or_file("upda"), Some("update".to_string()));
+        assert_eq!(
+            autocomplete_command_or_file("car"),
+            Some("cargo".to_string())
+        );
+        assert_eq!(
+            autocomplete_command_or_file("searc"),
+            Some("search".to_string())
+        );
+        assert_eq!(
+            autocomplete_command_or_file("upda"),
+            Some("update".to_string())
+        );
     }
 
     #[test]
     fn test_autocomplete_subcommand() {
-        assert_eq!(autocomplete_command_or_file("git st"), Some("git status".to_string()));
-        assert_eq!(autocomplete_command_or_file("cargo ch"), Some("cargo check".to_string()));
-        assert_eq!(autocomplete_command_or_file("npm st"), Some("npm start".to_string()));
+        assert_eq!(
+            autocomplete_command_or_file("git st"),
+            Some("git status".to_string())
+        );
+        assert_eq!(
+            autocomplete_command_or_file("cargo ch"),
+            Some("cargo check".to_string())
+        );
+        assert_eq!(
+            autocomplete_command_or_file("npm st"),
+            Some("npm start".to_string())
+        );
     }
 
     #[test]
@@ -544,7 +682,10 @@ mod tests {
         assert_eq!(get_command_status("cargo"), CommandStatus::Valid);
         assert_eq!(get_command_status("carg"), CommandStatus::Prefix);
         assert_eq!(get_command_status("car"), CommandStatus::Prefix);
-        assert_eq!(get_command_status("carggo_invalid_xyz"), CommandStatus::Invalid);
+        assert_eq!(
+            get_command_status("carggo_invalid_xyz"),
+            CommandStatus::Invalid
+        );
     }
 
     #[test]

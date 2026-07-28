@@ -234,7 +234,8 @@ impl Executor {
                             return false;
                         }
                         let first_word = s.split_whitespace().next().unwrap_or("");
-                        crate::editor::get_command_status(first_word) != crate::editor::CommandStatus::Invalid
+                        crate::editor::get_command_status(first_word)
+                            != crate::editor::CommandStatus::Invalid
                     })
                     .collect();
             }
@@ -330,10 +331,18 @@ mod tests {
             .join("\n");
         fs::write(&test_file, lines_str).unwrap();
 
-        let res_head = executor.builtin_head(&["-n".to_string(), "5".to_string(), test_file.to_string_lossy().to_string()]);
+        let res_head = executor.builtin_head(&[
+            "-n".to_string(),
+            "5".to_string(),
+            test_file.to_string_lossy().to_string(),
+        ]);
         assert_eq!(res_head, 0);
 
-        let res_tail = executor.builtin_tail(&["-n".to_string(), "5".to_string(), test_file.to_string_lossy().to_string()]);
+        let res_tail = executor.builtin_tail(&[
+            "-n".to_string(),
+            "5".to_string(),
+            test_file.to_string_lossy().to_string(),
+        ]);
         assert_eq!(res_tail, 0);
 
         let _ = fs::remove_dir_all(&temp_path);
@@ -368,12 +377,18 @@ mod tests {
 
         fs::write(&src_file, "copy test content").unwrap();
 
-        let res_cp = executor.builtin_cp(&[src_file.to_string_lossy().to_string(), cp_file.to_string_lossy().to_string()]);
+        let res_cp = executor.builtin_cp(&[
+            src_file.to_string_lossy().to_string(),
+            cp_file.to_string_lossy().to_string(),
+        ]);
         assert_eq!(res_cp, 0);
         assert!(cp_file.exists());
         assert_eq!(fs::read_to_string(&cp_file).unwrap(), "copy test content");
 
-        let res_mv = executor.builtin_mv(&[cp_file.to_string_lossy().to_string(), mv_file.to_string_lossy().to_string()]);
+        let res_mv = executor.builtin_mv(&[
+            cp_file.to_string_lossy().to_string(),
+            mv_file.to_string_lossy().to_string(),
+        ]);
         assert_eq!(res_mv, 0);
         assert!(!cp_file.exists());
         assert!(mv_file.exists());

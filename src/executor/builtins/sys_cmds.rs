@@ -13,7 +13,9 @@ pub fn builtin_top() -> i32 {
     let os = env::consts::OS;
     let arch = env::consts::ARCH;
     let pid = std::process::id();
-    let cpus = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
+    let cpus = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1);
 
     println!();
     println!(
@@ -34,11 +36,35 @@ pub fn builtin_top() -> i32 {
         SetForegroundColor(Color::AnsiValue(141)),
         ResetColor
     );
-    println!("   {}Operating System:{}   {}", SetForegroundColor(Color::AnsiValue(75)), ResetColor, os);
-    println!("   {}Architecture:    {}   {}", SetForegroundColor(Color::AnsiValue(75)), ResetColor, arch);
-    println!("   {}CPU Cores:       {}   {}", SetForegroundColor(Color::AnsiValue(75)), ResetColor, cpus);
-    println!("   {}Current PID:     {}   {}", SetForegroundColor(Color::AnsiValue(75)), ResetColor, pid);
-    println!("   {}Memory Subsystem:{}   64-bit Virtual Memory", SetForegroundColor(Color::AnsiValue(75)), ResetColor);
+    println!(
+        "   {}Operating System:{}   {}",
+        SetForegroundColor(Color::AnsiValue(75)),
+        ResetColor,
+        os
+    );
+    println!(
+        "   {}Architecture:    {}   {}",
+        SetForegroundColor(Color::AnsiValue(75)),
+        ResetColor,
+        arch
+    );
+    println!(
+        "   {}CPU Cores:       {}   {}",
+        SetForegroundColor(Color::AnsiValue(75)),
+        ResetColor,
+        cpus
+    );
+    println!(
+        "   {}Current PID:     {}   {}",
+        SetForegroundColor(Color::AnsiValue(75)),
+        ResetColor,
+        pid
+    );
+    println!(
+        "   {}Memory Subsystem:{}   64-bit Virtual Memory",
+        SetForegroundColor(Color::AnsiValue(75)),
+        ResetColor
+    );
     println!(
         " {}{}+------------------------------------------------------+{}\n",
         SetAttribute(Attribute::Bold),
@@ -52,7 +78,9 @@ pub fn builtin_top() -> i32 {
 pub fn builtin_sys() -> i32 {
     let os = env::consts::OS;
     let arch = env::consts::ARCH;
-    let username = env::var("USERNAME").or_else(|_| env::var("USER")).unwrap_or_else(|_| "lshell".to_string());
+    let username = env::var("USERNAME")
+        .or_else(|_| env::var("USER"))
+        .unwrap_or_else(|_| "lshell".to_string());
     let rust_ver = "1.85.0";
     let app_ver = env!("CARGO_PKG_VERSION");
 
@@ -137,7 +165,8 @@ pub fn check_update_banner() {
             let latest_ver = latest.version.trim_start_matches('v');
             let current_ver = self_update::cargo_crate_version!();
 
-            let is_greater = self_update::version::bump_is_greater(current_ver, latest_ver).unwrap_or(false);
+            let is_greater =
+                self_update::version::bump_is_greater(current_ver, latest_ver).unwrap_or(false);
 
             if is_greater {
                 println!(
@@ -226,7 +255,10 @@ pub fn builtin_install_wt() -> i32 {
     let exe_path = match env::current_exe() {
         Ok(p) => p,
         Err(e) => {
-            eprintln!("lshell: install-wt: failed to determine executable path: {}", e);
+            eprintln!(
+                "lshell: install-wt: failed to determine executable path: {}",
+                e
+            );
             return 1;
         }
     };
@@ -240,8 +272,11 @@ pub fn builtin_install_wt() -> i32 {
     };
 
     let candidate_paths = [
-        local_app_data.join("Packages\\Microsoft.WindowsTerminal_8wekyb3d8bbwe\\LocalState\\settings.json"),
-        local_app_data.join("Packages\\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\\LocalState\\settings.json"),
+        local_app_data
+            .join("Packages\\Microsoft.WindowsTerminal_8wekyb3d8bbwe\\LocalState\\settings.json"),
+        local_app_data.join(
+            "Packages\\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\\LocalState\\settings.json",
+        ),
         local_app_data.join("Microsoft\\Windows Terminal\\settings.json"),
     ];
 
@@ -264,7 +299,11 @@ pub fn builtin_install_wt() -> i32 {
     let content = match fs::read_to_string(&settings_path) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("lshell: install-wt: failed to read {}: {}", settings_path.display(), e);
+            eprintln!(
+                "lshell: install-wt: failed to read {}: {}",
+                settings_path.display(),
+                e
+            );
             return 1;
         }
     };
@@ -272,7 +311,11 @@ pub fn builtin_install_wt() -> i32 {
     let mut val: serde_json::Value = match serde_json::from_str(&content) {
         Ok(v) => v,
         Err(e) => {
-            eprintln!("lshell: install-wt: failed to parse JSON in {}: {}", settings_path.display(), e);
+            eprintln!(
+                "lshell: install-wt: failed to parse JSON in {}: {}",
+                settings_path.display(),
+                e
+            );
             return 1;
         }
     };
@@ -315,13 +358,19 @@ pub fn builtin_install_wt() -> i32 {
     let updated_content = match serde_json::to_string_pretty(&val) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("lshell: install-wt: failed to serialize updated JSON: {}", e);
+            eprintln!(
+                "lshell: install-wt: failed to serialize updated JSON: {}",
+                e
+            );
             return 1;
         }
     };
 
     if let Err(e) = fs::write(&settings_path, updated_content) {
-        eprintln!("lshell: install-wt: failed to write updated settings.json: {}", e);
+        eprintln!(
+            "lshell: install-wt: failed to write updated settings.json: {}",
+            e
+        );
         return 1;
     }
 
@@ -347,7 +396,10 @@ pub fn builtin_install_vscode() -> i32 {
     let exe_path = match env::current_exe() {
         Ok(p) => p,
         Err(e) => {
-            eprintln!("lshell: install-vscode: failed to determine executable path: {}", e);
+            eprintln!(
+                "lshell: install-vscode: failed to determine executable path: {}",
+                e
+            );
             return 1;
         }
     };
@@ -409,7 +461,9 @@ pub fn builtin_install_vscode() -> i32 {
         });
 
         if let Some(obj) = val.as_object_mut() {
-            let profiles = obj.entry(&profiles_key).or_insert_with(|| serde_json::json!({}));
+            let profiles = obj
+                .entry(&profiles_key)
+                .or_insert_with(|| serde_json::json!({}));
             if let Some(p_map) = profiles.as_object_mut() {
                 p_map.insert("lshell".to_string(), profile_entry);
             }
@@ -446,7 +500,11 @@ pub fn builtin_install(args: &[String]) -> i32 {
         _ => {
             let code_wt = builtin_install_wt();
             let code_vc = builtin_install_vscode();
-            if code_wt == 0 || code_vc == 0 { 0 } else { 1 }
+            if code_wt == 0 || code_vc == 0 {
+                0
+            } else {
+                1
+            }
         }
     }
 }

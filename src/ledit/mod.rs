@@ -2,8 +2,13 @@ use crossterm::{
     cursor::{Hide, MoveTo, Show},
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     execute, queue,
-    style::{Attribute, Color, Print, ResetColor, SetAttribute, SetBackgroundColor, SetForegroundColor},
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen, Clear, ClearType},
+    style::{
+        Attribute, Color, Print, ResetColor, SetAttribute, SetBackgroundColor, SetForegroundColor,
+    },
+    terminal::{
+        disable_raw_mode, enable_raw_mode, Clear, ClearType, EnterAlternateScreen,
+        LeaveAlternateScreen,
+    },
 };
 use std::fs;
 use std::io::{stdout, Write};
@@ -34,7 +39,7 @@ impl LeditEditor {
 
         let initial_line_count = lines.len();
         let mut stdout = stdout();
-        
+
         execute!(stdout, EnterAlternateScreen)?;
         enable_raw_mode()?;
 
@@ -98,7 +103,11 @@ impl LeditEditor {
 
             for row in 0..max_content_rows {
                 let line_idx = row_offset + row;
-                queue!(stdout, MoveTo(0, (row + 1) as u16), Clear(ClearType::UntilNewLine))?;
+                queue!(
+                    stdout,
+                    MoveTo(0, (row + 1) as u16),
+                    Clear(ClearType::UntilNewLine)
+                )?;
                 if line_idx < lines.len() {
                     let line_str = &lines[line_idx];
                     let max_line_len = (cols as usize).saturating_sub(7);
@@ -117,13 +126,21 @@ impl LeditEditor {
                 }
             }
 
-            let status_formatted = format!(" {:<width$}", status_message, width = (cols as usize).saturating_sub(1));
+            let status_formatted = format!(
+                " {:<width$}",
+                status_message,
+                width = (cols as usize).saturating_sub(1)
+            );
             queue!(
                 stdout,
                 MoveTo(0, rows - 3),
                 SetForegroundColor(Color::AnsiValue(75)),
                 SetAttribute(Attribute::Bold),
-                Print(format!("{:<width$}", status_formatted, width = cols as usize)),
+                Print(format!(
+                    "{:<width$}",
+                    status_formatted,
+                    width = cols as usize
+                )),
                 ResetColor
             )?;
 
@@ -166,7 +183,9 @@ impl LeditEditor {
                     continue;
                 }
 
-                let KeyEvent { code, modifiers, .. } = key;
+                let KeyEvent {
+                    code, modifiers, ..
+                } = key;
 
                 if find_mode {
                     match code {
@@ -184,7 +203,11 @@ impl LeditEditor {
                                         if line_idx != cy || col_idx > cx || i > 0 {
                                             cy = line_idx;
                                             cx = col_idx;
-                                            status_message = format!("[ Match found at line {}, col {} ]", cy + 1, cx + 1);
+                                            status_message = format!(
+                                                "[ Match found at line {}, col {} ]",
+                                                cy + 1,
+                                                cx + 1
+                                            );
                                             found = true;
                                             break;
                                         }
@@ -208,7 +231,9 @@ impl LeditEditor {
                     continue;
                 }
 
-                if (code == KeyCode::Char('f') || code == KeyCode::Char('w')) && modifiers.contains(KeyModifiers::CONTROL) {
+                if (code == KeyCode::Char('f') || code == KeyCode::Char('w'))
+                    && modifiers.contains(KeyModifiers::CONTROL)
+                {
                     find_mode = true;
                     find_query.clear();
                     status_message = " Search: ".to_string();
@@ -239,7 +264,9 @@ impl LeditEditor {
                     }
                 }
 
-                if (code == KeyCode::Char('o') || code == KeyCode::Char('s')) && modifiers.contains(KeyModifiers::CONTROL) {
+                if (code == KeyCode::Char('o') || code == KeyCode::Char('s'))
+                    && modifiers.contains(KeyModifiers::CONTROL)
+                {
                     let content = lines.join("\n");
                     match fs::write(&path, content) {
                         Ok(_) => {
@@ -359,7 +386,12 @@ fn render_syntax_highlighted_line(
 ) -> Result<(), std::io::Error> {
     let trimmed = line.trim();
     if trimmed.starts_with("//") || trimmed.starts_with('#') || trimmed.starts_with("<!--") {
-        queue!(stdout, SetForegroundColor(Color::AnsiValue(243)), Print(line), ResetColor)?;
+        queue!(
+            stdout,
+            SetForegroundColor(Color::AnsiValue(243)),
+            Print(line),
+            ResetColor
+        )?;
         return Ok(());
     }
 
@@ -376,21 +408,105 @@ fn render_syntax_highlighted_line(
 
     let keywords = [
         // Rust
-        "fn", "pub", "let", "mut", "struct", "impl", "use", "match", "return", "if", "else",
-        "true", "false", "type", "mod", "crate", "enum", "trait", "where", "async", "await",
-        "loop", "while", "for", "in", "break", "continue", "self", "Self", "dyn", "ref", "static",
+        "fn",
+        "pub",
+        "let",
+        "mut",
+        "struct",
+        "impl",
+        "use",
+        "match",
+        "return",
+        "if",
+        "else",
+        "true",
+        "false",
+        "type",
+        "mod",
+        "crate",
+        "enum",
+        "trait",
+        "where",
+        "async",
+        "await",
+        "loop",
+        "while",
+        "for",
+        "in",
+        "break",
+        "continue",
+        "self",
+        "Self",
+        "dyn",
+        "ref",
+        "static",
         // Python
-        "def", "class", "import", "from", "as", "try", "except", "finally", "with", "raise",
-        "lambda", "is", "not", "and", "or", "None", "pass", "yield", "global", "nonlocal",
+        "def",
+        "class",
+        "import",
+        "from",
+        "as",
+        "try",
+        "except",
+        "finally",
+        "with",
+        "raise",
+        "lambda",
+        "is",
+        "not",
+        "and",
+        "or",
+        "None",
+        "pass",
+        "yield",
+        "global",
+        "nonlocal",
         // JavaScript / TypeScript
-        "function", "const", "var", "interface", "export", "default", "extends", "implements",
-        "constructor", "typeof", "instanceof", "new", "delete", "void", "any", "string", "number",
-        "boolean", "null", "undefined",
+        "function",
+        "const",
+        "var",
+        "interface",
+        "export",
+        "default",
+        "extends",
+        "implements",
+        "constructor",
+        "typeof",
+        "instanceof",
+        "new",
+        "delete",
+        "void",
+        "any",
+        "string",
+        "number",
+        "boolean",
+        "null",
+        "undefined",
         // C / C++
-        "int", "char", "float", "double", "unsigned", "signed", "long", "short", "include",
-        "define", "namespace", "template", "typename", "public", "private", "protected",
+        "int",
+        "char",
+        "float",
+        "double",
+        "unsigned",
+        "signed",
+        "long",
+        "short",
+        "include",
+        "define",
+        "namespace",
+        "template",
+        "typename",
+        "public",
+        "private",
+        "protected",
         // Configuration / Declarative
-        "package", "version", "dependencies", "description", "authors", "license", "scripts",
+        "package",
+        "version",
+        "dependencies",
+        "description",
+        "authors",
+        "license",
+        "scripts",
     ];
 
     let words = line.split_inclusive(|c: char| !c.is_alphanumeric() && c != '_');
@@ -399,12 +515,22 @@ fn render_syntax_highlighted_line(
     for word in words {
         if word.contains('"') || word.contains('\'') || word.contains('`') {
             in_string = !in_string;
-            queue!(stdout, SetForegroundColor(Color::AnsiValue(220)), Print(word), ResetColor)?;
+            queue!(
+                stdout,
+                SetForegroundColor(Color::AnsiValue(220)),
+                Print(word),
+                ResetColor
+            )?;
             continue;
         }
 
         if in_string {
-            queue!(stdout, SetForegroundColor(Color::AnsiValue(220)), Print(word), ResetColor)?;
+            queue!(
+                stdout,
+                SetForegroundColor(Color::AnsiValue(220)),
+                Print(word),
+                ResetColor
+            )?;
             continue;
         }
 
@@ -418,9 +544,19 @@ fn render_syntax_highlighted_line(
                 ResetColor
             )?;
         } else if !clean.is_empty() && clean.chars().all(|c| c.is_ascii_digit()) {
-            queue!(stdout, SetForegroundColor(Color::AnsiValue(81)), Print(word), ResetColor)?;
+            queue!(
+                stdout,
+                SetForegroundColor(Color::AnsiValue(81)),
+                Print(word),
+                ResetColor
+            )?;
         } else {
-            queue!(stdout, SetForegroundColor(Color::AnsiValue(252)), Print(word), ResetColor)?;
+            queue!(
+                stdout,
+                SetForegroundColor(Color::AnsiValue(252)),
+                Print(word),
+                ResetColor
+            )?;
         }
     }
 

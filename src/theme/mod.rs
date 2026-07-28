@@ -24,7 +24,9 @@ pub struct PowerlineRenderer {
 
 impl PowerlineRenderer {
     pub fn new(use_powerline_symbols: bool) -> Self {
-        Self { use_powerline_symbols }
+        Self {
+            use_powerline_symbols,
+        }
     }
 
     pub fn render(&self, segments: &[Segment]) -> String {

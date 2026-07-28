@@ -283,7 +283,9 @@ impl PromptBuilder {
 
     fn build_agnoster(last_exit_code: i32, config: &Config) -> String {
         let mut segments = Vec::new();
-        let username = env::var("USERNAME").or_else(|_| env::var("USER")).unwrap_or_else(|_| "lshell".to_string());
+        let username = env::var("USERNAME")
+            .or_else(|_| env::var("USER"))
+            .unwrap_or_else(|_| "lshell".to_string());
 
         segments.push(Segment::new(
             format!("  {} ", username),
@@ -373,7 +375,10 @@ fn detect_dev_badge(dir: &Path) -> Option<(&'static str, u8)> {
         Some(("🐳 Docker", 75))
     } else if dir.join("go.mod").exists() {
         Some(("🐹 Go", 81))
-    } else if dir.join("pom.xml").exists() || dir.join("build.gradle").exists() || dir.join("build.gradle.kts").exists() {
+    } else if dir.join("pom.xml").exists()
+        || dir.join("build.gradle").exists()
+        || dir.join("build.gradle.kts").exists()
+    {
         Some(("☕ Java", 172))
     } else if dir.join("composer.json").exists() {
         Some(("🐘 PHP", 141))
@@ -400,4 +405,3 @@ fn format_path(path: &Path) -> String {
     }
     path.display().to_string()
 }
-

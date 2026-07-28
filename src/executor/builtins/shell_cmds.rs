@@ -110,7 +110,10 @@ pub fn load_z_db() -> HashMap<String, u32> {
 pub fn save_z_db(db: &HashMap<String, u32>) {
     if let Some(home) = dirs::home_dir() {
         let path = home.join(".lshell_z");
-        let mut lines: Vec<_> = db.iter().map(|(p, score)| format!("{}|{}", score, p)).collect();
+        let mut lines: Vec<_> = db
+            .iter()
+            .map(|(p, score)| format!("{}|{}", score, p))
+            .collect();
         lines.sort();
         let content = lines.join("\n");
         let _ = fs::write(path, content);
@@ -172,12 +175,57 @@ pub fn builtin_which(args: &[String]) -> i32 {
 
     let cmd = &args[0];
     let builtins = [
-        "cd", "pwd", "ls", "dir", "tree", "sys", "info", "version", "update", "updater",
-        "install-wt", "wt-install", "install-vscode", "vscode-install", "install", "cat",
-        "type", "edit", "ledit", "touch", "mkdir", "rm", "del", "clear", "cls", "history",
-        "help", "exit", "..", "...", "....", "search", "find", "usage", "du", "bench", "time",
-        "top", "ps", "alias", "z", "jump", "export", "env", "unset", "head", "tail", "cp", "copy",
-        "mv", "move"
+        "cd",
+        "pwd",
+        "ls",
+        "dir",
+        "tree",
+        "sys",
+        "info",
+        "version",
+        "update",
+        "updater",
+        "install-wt",
+        "wt-install",
+        "install-vscode",
+        "vscode-install",
+        "install",
+        "cat",
+        "type",
+        "edit",
+        "ledit",
+        "touch",
+        "mkdir",
+        "rm",
+        "del",
+        "clear",
+        "cls",
+        "history",
+        "help",
+        "exit",
+        "..",
+        "...",
+        "....",
+        "search",
+        "find",
+        "usage",
+        "du",
+        "bench",
+        "time",
+        "top",
+        "ps",
+        "alias",
+        "z",
+        "jump",
+        "export",
+        "env",
+        "unset",
+        "head",
+        "tail",
+        "cp",
+        "copy",
+        "mv",
+        "move",
     ];
     if builtins.contains(&cmd.to_lowercase().as_str()) {
         println!(" {}: lshell Built-in Command", cmd);
