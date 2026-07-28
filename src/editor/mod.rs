@@ -424,7 +424,7 @@ pub fn get_command_status(cmd: &str) -> CommandStatus {
         "tail",
         "cp",
         "mv",
-        "theme"
+        "theme",
     ];
 
     if builtins.contains(&lower.as_str()) {
