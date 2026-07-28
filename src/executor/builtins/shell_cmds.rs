@@ -596,11 +596,11 @@ pub fn builtin_theme(args: &[String], config: &mut Config) -> i32 {
 
     if args.is_empty() {
         let menu_options = vec![
-            "🎨 Select active theme".to_string(),
-            "➕ Create custom theme (Wizard)".to_string(),
-            "📋 List all themes".to_string(),
-            "🗑️ Delete a custom theme".to_string(),
-            "❌ Exit".to_string(),
+            "Select active theme".to_string(),
+            "Create custom theme (Wizard)".to_string(),
+            "List all themes".to_string(),
+            "Delete a custom theme".to_string(),
+            "Exit".to_string(),
         ];
         match choice_single("LSHELL Theme Manager", &menu_options, 0) {
             Ok(0) => {
