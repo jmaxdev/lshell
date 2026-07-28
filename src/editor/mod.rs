@@ -107,12 +107,12 @@ impl LineEditor {
                             stdout.flush()?;
                         }
 
-                        KeyCode::Char('d') if modifiers.contains(KeyModifiers::CONTROL) => {
-                            if buffer.is_empty() {
-                                println!("exit");
-                                disable_raw_mode()?;
-                                return Ok("exit".to_string());
-                            }
+                        KeyCode::Char('d')
+                            if modifiers.contains(KeyModifiers::CONTROL) && buffer.is_empty() =>
+                        {
+                            println!("exit");
+                            disable_raw_mode()?;
+                            return Ok("exit".to_string());
                         }
 
                         KeyCode::Right => {
@@ -126,28 +126,22 @@ impl LineEditor {
                             }
                         }
 
-                        KeyCode::Left => {
-                            if cursor_pos > 0 {
-                                if let Some(ch) = buffer[..cursor_pos].chars().next_back() {
-                                    cursor_pos -= ch.len_utf8();
-                                }
+                        KeyCode::Left if cursor_pos > 0 => {
+                            if let Some(ch) = buffer[..cursor_pos].chars().next_back() {
+                                cursor_pos -= ch.len_utf8();
                             }
                         }
 
-                        KeyCode::Backspace => {
-                            if cursor_pos > 0 {
-                                if let Some(ch) = buffer[..cursor_pos].chars().next_back() {
-                                    let ch_len = ch.len_utf8();
-                                    cursor_pos -= ch_len;
-                                    buffer.remove(cursor_pos);
-                                }
-                            }
-                        }
-
-                        KeyCode::Delete => {
-                            if cursor_pos < buffer.len() {
+                        KeyCode::Backspace if cursor_pos > 0 => {
+                            if let Some(ch) = buffer[..cursor_pos].chars().next_back() {
+                                let ch_len = ch.len_utf8();
+                                cursor_pos -= ch_len;
                                 buffer.remove(cursor_pos);
                             }
+                        }
+
+                        KeyCode::Delete if cursor_pos < buffer.len() => {
+                            buffer.remove(cursor_pos);
                         }
 
                         KeyCode::Home => {
@@ -164,12 +158,10 @@ impl LineEditor {
                             cursor_pos = buffer.len();
                         }
 
-                        KeyCode::Up => {
-                            if !history.is_empty() && history_index > 0 {
-                                history_index -= 1;
-                                buffer = history[history_index].clone();
-                                cursor_pos = buffer.len();
-                            }
+                        KeyCode::Up if !history.is_empty() && history_index > 0 => {
+                            history_index -= 1;
+                            buffer = history[history_index].clone();
+                            cursor_pos = buffer.len();
                         }
 
                         KeyCode::Down => {

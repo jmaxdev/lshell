@@ -98,8 +98,8 @@ pub fn builtin_ls(args: &[String]) -> i32 {
         let display_name = format!("{}{}", name, dir_suffix);
 
         if bold {
-            print!(
-                " {:<2} {}{}{:<26}{} {}{}{}\n",
+            println!(
+                " {:<2} {}{}{:<26}{} {}{}{}",
                 icon,
                 SetAttribute(Attribute::Bold),
                 SetForegroundColor(name_color),
@@ -110,8 +110,8 @@ pub fn builtin_ls(args: &[String]) -> i32 {
                 ResetColor
             );
         } else {
-            print!(
-                " {:<2} {}{:<26}{} {}{}{}\n",
+            println!(
+                " {:<2} {}{:<26}{} {}{}{}",
                 icon,
                 SetForegroundColor(name_color),
                 display_name,
@@ -509,7 +509,7 @@ pub fn builtin_usage(args: &[String]) -> i32 {
         }
     }
 
-    items.sort_by(|a, b| b.1.cmp(&a.1));
+    items.sort_by_key(|b| std::cmp::Reverse(b.1));
 
     for (name, size, is_dir) in items {
         let pct = if total_size > 0 {
@@ -553,7 +553,7 @@ fn render_tree_recursive(
             .filter(|e| !e.file_name().to_string_lossy().starts_with('.'))
             .collect();
 
-        items.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
+        items.sort_by_key(|a| a.file_name());
 
         let total = items.len();
         for (i, entry) in items.iter().enumerate() {

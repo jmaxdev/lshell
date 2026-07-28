@@ -318,14 +318,10 @@ impl LeditEditor {
 
                 match code {
                     KeyCode::Up => {
-                        if cy > 0 {
-                            cy -= 1;
-                        }
+                        cy = cy.saturating_sub(1);
                     }
-                    KeyCode::Down => {
-                        if cy + 1 < lines.len() {
-                            cy += 1;
-                        }
+                    KeyCode::Down if cy + 1 < lines.len() => {
+                        cy += 1;
                     }
                     KeyCode::Left => {
                         if cx > 0 {
@@ -586,7 +582,7 @@ fn draw_key_row(
             SetBackgroundColor(Color::AnsiValue(255)),
             SetForegroundColor(Color::AnsiValue(0)),
             SetAttribute(Attribute::Bold),
-            Print(format!("{}", key)),
+            Print(key.to_string()),
             ResetColor,
             SetForegroundColor(Color::AnsiValue(250)),
             Print(format!(" {:<width$}", label, width = pad_width)),

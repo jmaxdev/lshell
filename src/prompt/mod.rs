@@ -81,7 +81,7 @@ impl PromptBuilder {
             }
         }
 
-        let _ = write!(out, "{}\n", ResetColor);
+        let _ = writeln!(out, "{}", ResetColor);
 
         let _ = write!(
             out,
@@ -135,7 +135,7 @@ impl PromptBuilder {
 
         let renderer = PowerlineRenderer::new(config.use_powerline_symbols);
         let mut prompt = renderer.render(&segments);
-        prompt.push_str("\n");
+        prompt.push('\n');
         prompt.push_str(&config.prompt_symbol);
         prompt
     }
@@ -182,7 +182,7 @@ impl PromptBuilder {
 
         let renderer = PowerlineRenderer::new(config.use_powerline_symbols);
         let mut prompt = renderer.render(&segments);
-        prompt.push_str("\n");
+        prompt.push('\n');
         prompt.push_str(&config.prompt_symbol);
         prompt
     }
@@ -229,7 +229,7 @@ impl PromptBuilder {
 
         let renderer = PowerlineRenderer::new(config.use_powerline_symbols);
         let mut prompt = renderer.render(&segments);
-        prompt.push_str("\n");
+        prompt.push('\n');
         prompt.push_str(&config.prompt_symbol);
         prompt
     }
@@ -276,7 +276,7 @@ impl PromptBuilder {
 
         let renderer = PowerlineRenderer::new(config.use_powerline_symbols);
         let mut prompt = renderer.render(&segments);
-        prompt.push_str("\n");
+        prompt.push('\n');
         prompt.push_str(&config.prompt_symbol);
         prompt
     }
@@ -336,7 +336,7 @@ impl PromptBuilder {
 
         let renderer = PowerlineRenderer::new(config.use_powerline_symbols);
         let mut prompt = renderer.render(&segments);
-        prompt.push_str("\n");
+        prompt.push('\n');
         prompt.push_str(&config.prompt_symbol);
         prompt
     }
