@@ -52,7 +52,7 @@ impl Executor {
                     let code = temp_exec.execute(cmd_str, cfg);
                     let elapsed = start.elapsed();
                     println!(
-                        "\n ⚡ Benchmark: command finished in {:.2?} (exit code {})",
+                        "\n Benchmark: command finished in {:.2?} (exit code {})",
                         elapsed, code
                     );
                     code
