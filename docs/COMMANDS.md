@@ -13,7 +13,8 @@
 | `ls [dir]` | `dir` | List files with vector icons, color coding, and file sizes. Use `-a` to include hidden files. |
 | `tree [dir]` | | Display directory tree hierarchy. Options: `--full` for deep recursive tree (depth 3), `--file` to save to `tree.txt`. |
 | `pwd` | | Print current working directory path. |
-| `alias [k=v]` | | List active aliases or define a new alias. Use `alias --save` to persist aliases to `~/.lshell`. |
+| `alias [k=v]` | | List active aliases or define a new alias (`alias name=command`). Use `--local` for directory-scoped alias. Protected against overwrites, built-ins, and system binaries. |
+| `unalias <name>` | `alias remove` | Remove a global or local (`--local`) alias. |
 | `search <q>` | `find` | Recursively search for matching filenames and text line contents in target directory. |
 | `usage [dir]` | `du` | Calculate disk usage and display horizontal ASCII percentage progress bars. |
 | `bench <cmd>`| `time` | High-precision execution timer measuring command duration in milliseconds and reporting status. |
@@ -29,7 +30,7 @@
 | `touch <file>`| | Create one or more empty files. |
 | `mkdir <dir>`| | Create one or more directory paths recursively. |
 | `rm <path>` | `del` | Remove files or directories recursively. |
-| `export <K=V>`| | View or set environment variables (`export KEY=VALUE`). |
+| `export <K=V>`| | View or set environment variables (`export KEY=VALUE`). Protected against overwrites. |
 | `env [query]` | | View or filter active environment variables. |
 | `unset <VAR>`| | Remove one or more environment variables. |
 | `which <cmd>`| `where` | Locate binary executable path in `PATH` or confirm built-in status. |

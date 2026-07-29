@@ -102,12 +102,19 @@ impl LineEditor {
                             return Ok(buffer);
                         }
 
-                        KeyCode::Char('c') if modifiers.contains(KeyModifiers::CONTROL) => {
+                        KeyCode::Char('c')
+                            if modifiers.contains(KeyModifiers::CONTROL)
+                                || code == KeyCode::Char('\x03') =>
+                        {
                             buffer.clear();
                             cursor_pos = 0;
-                            println!("^C");
-                            print!("{}", prompt);
+                            if search_mode {
+                                search_mode = false;
+                                search_query.clear();
+                            }
+                            print!("^C\r\n{}", prompt);
                             stdout.flush()?;
+                            continue;
                         }
 
                         KeyCode::Char('d')
@@ -225,11 +232,18 @@ impl LineEditor {
                     None
                 };
 
+                let sym_color = config
+                    .custom_themes
+                    .get(&config.theme)
+                    .and_then(|t| t.prompt_symbol_fg)
+                    .map(Color::AnsiValue)
+                    .unwrap_or(Color::AnsiValue(78));
+
                 queue!(
                     stdout,
                     MoveToColumn(0),
                     Clear(ClearType::UntilNewLine),
-                    SetForegroundColor(Color::AnsiValue(78)),
+                    SetForegroundColor(sym_color),
                     Print(&config.prompt_symbol),
                     ResetColor
                 )?;
@@ -317,7 +331,7 @@ struct PathCache {
 
 static PATH_CACHE: Mutex<Option<PathCache>> = Mutex::new(None);
 
-fn get_path_binaries() -> HashSet<String> {
+pub fn get_path_binaries() -> HashSet<String> {
     if let Ok(mut cache_guard) = PATH_CACHE.lock() {
         if let Some(ref cache) = *cache_guard {
             if cache.last_updated.elapsed() < Duration::from_secs(10) {
@@ -366,11 +380,28 @@ pub enum CommandStatus {
 }
 
 pub fn get_command_status(cmd: &str) -> CommandStatus {
+    let config = Config::load();
+    get_command_status_with_config(cmd, &config)
+}
+
+pub fn get_command_status_with_config(cmd: &str, config: &Config) -> CommandStatus {
     if cmd.is_empty() {
         return CommandStatus::Prefix;
     }
 
     let lower = cmd.to_lowercase();
+    let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    let merged_aliases = config.get_merged_aliases(&cwd);
+
+    if merged_aliases.contains_key(&lower) {
+        return CommandStatus::Valid;
+    }
+
+    for alias_name in merged_aliases.keys() {
+        if alias_name.to_lowercase().starts_with(&lower) {
+            return CommandStatus::Prefix;
+        }
+    }
 
     let builtins = [
         "cd",
@@ -395,6 +426,7 @@ pub fn get_command_status(cmd: &str) -> CommandStatus {
         "quit",
         "export",
         "secret",
+        "unalias",
         "..",
         "...",
         "....",
@@ -471,6 +503,14 @@ fn autocomplete_command_or_file(input: &str) -> Option<String> {
 
     if parts.len() == 1 && !ends_with_space {
         let query = parts[0].to_lowercase();
+        let config = Config::load();
+        let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+        let merged_aliases = config.get_merged_aliases(&cwd);
+        for alias_name in merged_aliases.keys() {
+            if alias_name.to_lowercase().starts_with(&query) && alias_name.to_lowercase() != query {
+                return Some(alias_name.clone());
+            }
+        }
         let builtins = [
             "cd",
             "pwd",
@@ -493,6 +533,8 @@ fn autocomplete_command_or_file(input: &str) -> Option<String> {
             "exit",
             "quit",
             "export",
+            "secret",
+            "unalias",
             "tree",
             "sys",
             "info",
@@ -684,11 +726,23 @@ mod tests {
             get_command_status("carggo_invalid_xyz"),
             CommandStatus::Invalid
         );
+
+        let mut cfg = Config::default();
+        cfg.aliases
+            .insert("fmt".to_string(), "cargo fmt".to_string());
+        assert_eq!(
+            get_command_status_with_config("fmt", &cfg),
+            CommandStatus::Valid
+        );
+        assert_eq!(
+            get_command_status_with_config("fm", &cfg),
+            CommandStatus::Prefix
+        );
     }
 
     #[test]
     fn test_autosuggestion_filters_out_typos() {
-        let history = vec![
+        let history = [
             "cargo run -- --cli".to_string(),
             "caro run".to_string(),
             "carggo run".to_string(),
@@ -708,5 +762,11 @@ mod tests {
             .map(|cmd| cmd[buffer.len()..].to_string());
 
         assert_eq!(suggest, Some("go run -- --cli".to_string()));
+    }
+
+    #[test]
+    fn test_choice_single_empty_options() {
+        let empty: Vec<String> = vec![];
+        assert!(choice_single("Test Empty", &empty, 0).is_err());
     }
 }

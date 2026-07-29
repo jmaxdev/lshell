@@ -519,7 +519,7 @@ pub fn builtin_usage(args: &[String]) -> i32 {
         };
         let bar_len = pct / 10;
         let bar = format!("[{}{}]", "█".repeat(bar_len), "░".repeat(10 - bar_len));
-        let icon = if is_dir { "" } else { "📄" };
+        let icon = if is_dir { "DIR" } else { "FILE" };
 
         println!(
             "   {} {:>4}% {} {:>10}  {} {}",

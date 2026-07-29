@@ -65,6 +65,22 @@ pub struct CustomTheme {
     pub badge_bg: u8,
     pub user_fg: Option<u8>,
     pub user_bg: Option<u8>,
+    #[serde(default)]
+    pub host_fg: Option<u8>,
+    #[serde(default)]
+    pub host_bg: Option<u8>,
+    #[serde(default)]
+    pub time_fg: Option<u8>,
+    #[serde(default)]
+    pub time_bg: Option<u8>,
+    #[serde(default)]
+    pub error_fg: Option<u8>,
+    #[serde(default)]
+    pub error_bg: Option<u8>,
+    #[serde(default)]
+    pub prompt_symbol_fg: Option<u8>,
+    #[serde(default)]
+    pub show_dev_badge: Option<bool>,
     #[serde(default = "default_true")]
     pub use_powerline: bool,
     pub prompt_symbol: Option<String>,
@@ -173,6 +189,38 @@ impl Config {
             }
         }
     }
+
+    pub fn load_local_aliases(dir: &std::path::Path) -> HashMap<String, String> {
+        let local_path = dir.join(".lshell_alias");
+        if local_path.exists() {
+            if let Ok(content) = fs::read_to_string(&local_path) {
+                if let Ok(map) = toml::from_str::<HashMap<String, String>>(&content) {
+                    return map;
+                }
+            }
+        }
+        HashMap::new()
+    }
+
+    pub fn save_local_aliases(dir: &std::path::Path, aliases: &HashMap<String, String>) {
+        let local_path = dir.join(".lshell_alias");
+        if aliases.is_empty() {
+            if local_path.exists() {
+                let _ = fs::remove_file(local_path);
+            }
+        } else if let Ok(content) = toml::to_string_pretty(aliases) {
+            let _ = fs::write(local_path, content);
+        }
+    }
+
+    pub fn get_merged_aliases(&self, dir: &std::path::Path) -> HashMap<String, String> {
+        let mut merged = self.aliases.clone();
+        let local = Self::load_local_aliases(dir);
+        for (k, v) in local {
+            merged.insert(k, v);
+        }
+        merged
+    }
 }
 
 #[cfg(test)]
@@ -194,6 +242,14 @@ mod tests {
             badge_bg: 117,
             user_fg: None,
             user_bg: None,
+            host_fg: None,
+            host_bg: None,
+            time_fg: Some(245),
+            time_bg: Some(236),
+            error_fg: Some(15),
+            error_bg: Some(203),
+            prompt_symbol_fg: Some(78),
+            show_dev_badge: Some(true),
             use_powerline: true,
             prompt_symbol: Some("❯ ".to_string()),
         };
@@ -208,5 +264,32 @@ mod tests {
         let ocean = loaded.custom_themes.get("ocean").unwrap();
         assert_eq!(ocean.path_bg, 31);
         assert_eq!(ocean.prompt_symbol.as_deref(), Some("❯ "));
+    }
+
+    #[test]
+    fn test_local_aliases() {
+        let mut temp_path = std::env::temp_dir();
+        temp_path.push(format!("lshell_local_alias_test_{}", std::process::id()));
+        let _ = fs::remove_dir_all(&temp_path);
+        fs::create_dir_all(&temp_path).unwrap();
+
+        let mut local_map = HashMap::new();
+        local_map.insert("bld".to_string(), "cargo build".to_string());
+        Config::save_local_aliases(&temp_path, &local_map);
+
+        let loaded_local = Config::load_local_aliases(&temp_path);
+        assert_eq!(loaded_local.get("bld"), Some(&"cargo build".to_string()));
+
+        let mut cfg = Config::default();
+        cfg.aliases
+            .insert("bld".to_string(), "global build".to_string());
+        let merged = cfg.get_merged_aliases(&temp_path);
+        assert_eq!(merged.get("bld"), Some(&"cargo build".to_string()));
+
+        let empty_map = HashMap::new();
+        Config::save_local_aliases(&temp_path, &empty_map);
+        assert!(!temp_path.join(".lshell_alias").exists());
+
+        let _ = fs::remove_dir_all(&temp_path);
     }
 }

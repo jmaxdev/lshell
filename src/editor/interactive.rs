@@ -35,6 +35,17 @@ pub fn input_text(
             if key.kind == KeyEventKind::Release {
                 continue;
             }
+            if (key.code == KeyCode::Char('c')
+                && key
+                    .modifiers
+                    .contains(crossterm::event::KeyModifiers::CONTROL))
+                || key.code == KeyCode::Char('\x03')
+                || key.code == KeyCode::Esc
+            {
+                execute!(stdout, Print("\r\n"))?;
+                disable_raw_mode()?;
+                return Err("Operation cancelled".into());
+            }
             match key.code {
                 KeyCode::Enter => {
                     execute!(stdout, Print("\r\n"))?;
@@ -64,14 +75,6 @@ pub fn input_text(
                     )?;
                     stdout.flush()?;
                 }
-                KeyCode::Esc => {
-                    execute!(stdout, Print("\r\n"))?;
-                    disable_raw_mode()?;
-                    if let Some(def) = default_val {
-                        return Ok(def.to_string());
-                    }
-                    return Ok(buf);
-                }
                 _ => {}
             }
         }
@@ -84,7 +87,7 @@ pub fn choice_single(
     default_index: usize,
 ) -> Result<usize, Box<dyn std::error::Error>> {
     if options.is_empty() {
-        return Ok(0);
+        return Err("No options available".into());
     }
     enable_raw_mode()?;
     let mut stdout = stdout();
@@ -97,7 +100,7 @@ pub fn choice_single(
     };
 
     println!(
-        "\r\n {}{}? {}{}  (Use ↑/↓ keys, Enter to select)",
+        "\r\n {}{}? {}{}  (Use ↑/↓ keys, Enter to select, Esc/Ctrl+C to cancel)",
         SetAttribute(Attribute::Bold),
         SetForegroundColor(Color::AnsiValue(220)),
         title,
@@ -111,6 +114,18 @@ pub fn choice_single(
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Release {
                 continue;
+            }
+            if (key.code == KeyCode::Char('c')
+                && key
+                    .modifiers
+                    .contains(crossterm::event::KeyModifiers::CONTROL))
+                || key.code == KeyCode::Char('\x03')
+                || key.code == KeyCode::Esc
+            {
+                execute!(stdout, Show)?;
+                execute!(stdout, Print("\r\n"))?;
+                disable_raw_mode()?;
+                return Err("Operation cancelled".into());
             }
             match key.code {
                 KeyCode::Up | KeyCode::Char('k') => {
@@ -130,12 +145,6 @@ pub fn choice_single(
                     render_single_options(&mut stdout, options, selected, false)?;
                 }
                 KeyCode::Enter => {
-                    execute!(stdout, Show)?;
-                    execute!(stdout, Print("\r\n"))?;
-                    disable_raw_mode()?;
-                    return Ok(selected);
-                }
-                KeyCode::Esc => {
                     execute!(stdout, Show)?;
                     execute!(stdout, Print("\r\n"))?;
                     disable_raw_mode()?;
@@ -186,7 +195,7 @@ pub fn choice_multi(
     default_selected: &[usize],
 ) -> Result<Vec<usize>, Box<dyn std::error::Error>> {
     if options.is_empty() {
-        return Ok(Vec::new());
+        return Err("No options available".into());
     }
     enable_raw_mode()?;
     let mut stdout = stdout();
@@ -201,7 +210,7 @@ pub fn choice_multi(
     }
 
     println!(
-        "\r\n {}{}? {}{}  (Use ↑/↓ move, Space toggle, Enter confirm)",
+        "\r\n {}{}? {}{}  (Use ↑/↓ move, Space toggle, Enter confirm, Esc/Ctrl+C to cancel)",
         SetAttribute(Attribute::Bold),
         SetForegroundColor(Color::AnsiValue(220)),
         title,
@@ -215,6 +224,18 @@ pub fn choice_multi(
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Release {
                 continue;
+            }
+            if (key.code == KeyCode::Char('c')
+                && key
+                    .modifiers
+                    .contains(crossterm::event::KeyModifiers::CONTROL))
+                || key.code == KeyCode::Char('\x03')
+                || key.code == KeyCode::Esc
+            {
+                execute!(stdout, Show)?;
+                execute!(stdout, Print("\r\n"))?;
+                disable_raw_mode()?;
+                return Err("Operation cancelled".into());
             }
             match key.code {
                 KeyCode::Up | KeyCode::Char('k') => {
@@ -244,7 +265,7 @@ pub fn choice_multi(
                     }
                     render_multi_options(&mut stdout, options, &selected_flags, cursor, false)?;
                 }
-                KeyCode::Enter | KeyCode::Esc => {
+                KeyCode::Enter => {
                     execute!(stdout, Show)?;
                     execute!(stdout, Print("\r\n"))?;
                     disable_raw_mode()?;

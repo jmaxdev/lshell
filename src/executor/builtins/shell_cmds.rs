@@ -8,9 +8,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 pub fn builtin_alias(args: &[String], config: &mut Config) -> i32 {
+    let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     if args.is_empty() {
         println!(
-            "\n {}{}Configured Aliases:{}",
+            "\n {}{}Global Aliases (~/.lshell):{}",
             SetAttribute(Attribute::Bold),
             SetForegroundColor(Color::AnsiValue(75)),
             ResetColor
@@ -19,6 +20,21 @@ pub fn builtin_alias(args: &[String], config: &mut Config) -> i32 {
         keys.sort();
         for k in keys {
             println!("   {:10} = {}", k, config.aliases.get(k).unwrap());
+        }
+
+        let local_aliases = Config::load_local_aliases(&cwd);
+        if !local_aliases.is_empty() {
+            println!(
+                "\n {}{}Local Aliases (.lshell_alias):{}",
+                SetAttribute(Attribute::Bold),
+                SetForegroundColor(Color::AnsiValue(214)),
+                ResetColor
+            );
+            let mut lkeys: Vec<_> = local_aliases.keys().collect();
+            lkeys.sort();
+            for k in lkeys {
+                println!("   {:10} = {}", k, local_aliases.get(k).unwrap());
+            }
         }
         println!();
         return 0;
@@ -35,25 +51,150 @@ pub fn builtin_alias(args: &[String], config: &mut Config) -> i32 {
         return 0;
     }
 
-    let input = args.join(" ");
-    if let Some((name, val)) = input.split_once('=') {
-        let clean_name = name.trim().to_string();
-        let clean_val = val.trim().trim_matches('"').trim_matches('\'').to_string();
-        config.aliases.insert(clean_name.clone(), clean_val.clone());
-        println!(
-            " {}{}Alias added: {} = '{}'{}",
-            SetAttribute(Attribute::Bold),
-            SetForegroundColor(Color::AnsiValue(78)),
-            clean_name,
-            clean_val,
-            ResetColor
+    let is_local = args.iter().any(|a| a == "--local" || a == "-l");
+    let filtered_args: Vec<String> = args
+        .iter()
+        .filter(|a| *a != "--local" && *a != "-l")
+        .cloned()
+        .collect();
+
+    if filtered_args.is_empty() {
+        eprintln!(
+            "lshell: alias: usage: alias [--local|-l] <name>=<command> or unalias [--local|-l] <name>"
         );
-    } else {
-        eprintln!("lshell: alias: usage: alias <name>=<command> or alias --save");
         return 1;
     }
 
-    0
+    if filtered_args[0] == "unset"
+        || filtered_args[0] == "remove"
+        || filtered_args[0] == "rm"
+        || filtered_args[0] == "-d"
+    {
+        let mut un_args = filtered_args[1..].to_vec();
+        if is_local {
+            un_args.push("--local".to_string());
+        }
+        return builtin_unalias(&un_args, config);
+    }
+
+    let input = filtered_args.join(" ");
+    if let Some((name, val)) = input.split_once('=') {
+        let clean_name = name.trim().to_string();
+        let clean_val = val.trim().trim_matches('"').trim_matches('\'').to_string();
+
+        let lower_name = clean_name.to_lowercase();
+        let global_exists = config.aliases.contains_key(&clean_name);
+        let mut local_map = Config::load_local_aliases(&cwd);
+        let local_exists = local_map.contains_key(&clean_name);
+        let is_builtin_cmd = crate::executor::runner::is_builtin(&lower_name);
+        let path_bins = crate::editor::get_path_binaries();
+        let is_system_bin = path_bins.contains(&lower_name) || Path::new(&clean_name).is_file();
+
+        if is_builtin_cmd {
+            eprintln!(
+                "lshell: alias: '{}' is a built-in shell command and cannot be aliased",
+                clean_name
+            );
+            return 1;
+        }
+
+        if is_system_bin {
+            eprintln!(
+                "lshell: alias: '{}' is a system executable and cannot be aliased",
+                clean_name
+            );
+            return 1;
+        }
+
+        if global_exists || local_exists {
+            eprintln!(
+                "lshell: alias: '{}' already exists (use 'unalias {}' first to change it)",
+                clean_name, clean_name
+            );
+            return 1;
+        }
+
+        if is_local {
+            local_map.insert(clean_name.clone(), clean_val.clone());
+            Config::save_local_aliases(&cwd, &local_map);
+            println!(
+                " {}{}Local alias added (.lshell_alias): {} = '{}'{}",
+                SetAttribute(Attribute::Bold),
+                SetForegroundColor(Color::AnsiValue(78)),
+                clean_name,
+                clean_val,
+                ResetColor
+            );
+        } else {
+            config.aliases.insert(clean_name.clone(), clean_val.clone());
+            config.save();
+            println!(
+                " {}{}Alias added: {} = '{}'{}",
+                SetAttribute(Attribute::Bold),
+                SetForegroundColor(Color::AnsiValue(78)),
+                clean_name,
+                clean_val,
+                ResetColor
+            );
+        }
+        0
+    } else {
+        eprintln!(
+            "lshell: alias: usage: alias [--local|-l] <name>=<command> or unalias [--local|-l] <name>"
+        );
+        1
+    }
+}
+
+pub fn builtin_unalias(args: &[String], config: &mut Config) -> i32 {
+    let is_local = args.iter().any(|a| a == "--local" || a == "-l");
+    let filtered_args: Vec<String> = args
+        .iter()
+        .filter(|a| *a != "--local" && *a != "-l")
+        .cloned()
+        .collect();
+
+    if filtered_args.is_empty() {
+        eprintln!("lshell: unalias: usage: unalias [--local|-l] <name>");
+        return 1;
+    }
+
+    let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let key = &filtered_args[0];
+
+    if is_local {
+        let mut local_map = Config::load_local_aliases(&cwd);
+        if local_map.remove(key).is_some() {
+            Config::save_local_aliases(&cwd, &local_map);
+            println!(
+                " {}{}Local alias removed (.lshell_alias): {}{}",
+                SetAttribute(Attribute::Bold),
+                SetForegroundColor(Color::AnsiValue(78)),
+                key,
+                ResetColor
+            );
+            0
+        } else {
+            eprintln!(
+                "lshell: unalias: local alias '{}' not found in .lshell_alias",
+                key
+            );
+            1
+        }
+    } else if config.aliases.remove(key).is_some() {
+        config.save();
+        println!(
+            " {}{}Alias removed: {}{}",
+            SetAttribute(Attribute::Bold),
+            SetForegroundColor(Color::AnsiValue(78)),
+            key,
+            ResetColor
+        );
+        0
+    } else {
+        eprintln!("lshell: unalias: alias '{}' not found", key);
+        1
+    }
 }
 
 pub fn builtin_z(prev_dir: &mut Option<PathBuf>, args: &[String]) -> i32 {
@@ -136,12 +277,22 @@ pub fn builtin_export(args: &[String]) -> i32 {
         return 0;
     }
 
+    let mut exit_code = 0;
     for arg in args {
         if let Some((key, val)) = arg.split_once('=') {
-            env::set_var(key, val);
+            let clean_key = key.trim();
+            if env::var_os(clean_key).is_some() {
+                eprintln!(
+                    "lshell: export: variable '{}' already exists (use 'unset {}' first to change it)",
+                    clean_key, clean_key
+                );
+                exit_code = 1;
+            } else {
+                env::set_var(clean_key, val);
+            }
         }
     }
-    0
+    exit_code
 }
 
 pub fn builtin_secret(args: &[String], config: &mut crate::config::Config) -> i32 {
@@ -159,6 +310,7 @@ pub fn builtin_secret(args: &[String], config: &mut crate::config::Config) -> i3
                 );
                 return 1;
             }
+
             let (key, val) = if let Some((k, v)) = args[1].split_once('=') {
                 (k.to_string(), v.to_string())
             } else if args.len() >= 3 {
@@ -168,13 +320,18 @@ pub fn builtin_secret(args: &[String], config: &mut crate::config::Config) -> i3
                 return 1;
             };
 
+            if config.env.contains_key(&key) || env::var_os(&key).is_some() {
+                eprintln!("lshell: secret: secret/variable '{}' already exists", key);
+                return 1;
+            }
+
             let encrypted = crate::security::encrypt_val(&val);
             env::set_var(&key, &val);
             config.env.insert(key.clone(), encrypted);
             config.save();
 
             println!(
-                " {}{}🔒 Encrypted secret '{}' saved securely to ~/.lshell!{}",
+                " {}{}Encrypted secret '{}' saved securely to ~/.lshell!{}",
                 SetAttribute(Attribute::Bold),
                 SetForegroundColor(Color::AnsiValue(78)),
                 key,
@@ -215,7 +372,7 @@ pub fn builtin_secret(args: &[String], config: &mut crate::config::Config) -> i3
             );
             for (key, val) in &config.env {
                 let status = if val.starts_with("enc:") {
-                    "🔒 encrypted"
+                    "encrypted"
                 } else {
                     "plain"
                 };
@@ -758,14 +915,20 @@ fn theme_wizard(config: &mut Config) -> i32 {
     }
 
     let styles = vec![
-        " Powerline (Solid block arrows)".to_string(),
-        " Rounded / Capsule (Pill blocks)".to_string(),
-        " Slanted / Diagonal (Angled blocks)".to_string(),
-        "🎨 Minimal / Inline (No background fill)".to_string(),
-        "📦 Brackets ([ Folder ] [ Branch ])".to_string(),
-        "⚡ Pure / Modern (Clean text prompt)".to_string(),
+        "Powerline (Solid block arrows)".to_string(),
+        "Rounded / Capsule (Pill blocks)".to_string(),
+        "Slanted / Diagonal (Angled blocks)".to_string(),
+        "Minimal / Inline (No background fill)".to_string(),
+        "Brackets ([ Folder ] [ Branch ])".to_string(),
+        "Pure / Modern (Clean text prompt)".to_string(),
     ];
-    let style_idx = choice_single("Select Theme Design / Style", &styles, 0).unwrap_or(0);
+    let style_idx = match choice_single("Select Theme Design / Style", &styles, 0) {
+        Ok(idx) => idx,
+        Err(_) => {
+            println!(" [ Custom theme creation cancelled ]");
+            return 0;
+        }
+    };
     let chosen_style = match style_idx {
         1 => "rounded",
         2 => "slanted",
@@ -776,10 +939,16 @@ fn theme_wizard(config: &mut Config) -> i32 {
     };
 
     let line_layouts = vec![
-        "↵ Two lines (Segments on top, prompt symbol on line 2)".to_string(),
-        "➔ Single line (All on one line)".to_string(),
+        "Two lines (Segments on top, prompt symbol on line 2)".to_string(),
+        "Single line (All on one line)".to_string(),
     ];
-    let layout_idx = choice_single("Select Line Layout", &line_layouts, 0).unwrap_or(0);
+    let layout_idx = match choice_single("Select Line Layout", &line_layouts, 0) {
+        Ok(idx) => idx,
+        Err(_) => {
+            println!(" [ Custom theme creation cancelled ]");
+            return 0;
+        }
+    };
     let chosen_layout = if layout_idx == 1 {
         "single_line"
     } else {
@@ -802,28 +971,138 @@ fn theme_wizard(config: &mut Config) -> i32 {
     ];
     let color_names: Vec<String> = color_palette.iter().map(|(n, _)| n.clone()).collect();
 
-    let path_bg_idx = choice_single("Select Path Background Color", &color_names, 1).unwrap_or(1);
-    let path_fg_idx = choice_single("Select Path Text Color", &color_names, 10).unwrap_or(10);
+    let path_bg_idx = match choice_single("Select Path Background Color", &color_names, 1) {
+        Ok(idx) if idx < color_palette.len() => idx,
+        _ => {
+            println!(" [ Custom theme creation cancelled ]");
+            return 0;
+        }
+    };
+    let path_fg_idx = match choice_single("Select Path Text Color", &color_names, 10) {
+        Ok(idx) if idx < color_palette.len() => idx,
+        _ => {
+            println!(" [ Custom theme creation cancelled ]");
+            return 0;
+        }
+    };
 
-    let git_bg_idx = choice_single("Select Git Background Color", &color_names, 3).unwrap_or(3);
-    let git_fg_idx = choice_single("Select Git Text Color", &color_names, 11).unwrap_or(11);
-
-    let badge_bg_idx = choice_single("Select Badge Background Color", &color_names, 6).unwrap_or(6);
-    let badge_fg_idx = choice_single("Select Badge Text Color", &color_names, 11).unwrap_or(11);
+    let git_bg_idx = match choice_single("Select Git Background Color", &color_names, 3) {
+        Ok(idx) if idx < color_palette.len() => idx,
+        _ => {
+            println!(" [ Custom theme creation cancelled ]");
+            return 0;
+        }
+    };
+    let git_fg_idx = match choice_single("Select Git Text Color", &color_names, 11) {
+        Ok(idx) if idx < color_palette.len() => idx,
+        _ => {
+            println!(" [ Custom theme creation cancelled ]");
+            return 0;
+        }
+    };
 
     let opts = vec![
         "Enable Username Segment".to_string(),
-        "Use Powerline Arrow Symbols ()".to_string(),
+        "Enable Hostname Segment".to_string(),
+        "Enable Time Segment".to_string(),
+        "Enable Dev Environment Badge".to_string(),
+        "Enable Custom Exit Code Color".to_string(),
+        "Enable Custom Prompt Symbol Color".to_string(),
+        "Use Powerline Arrow Symbols".to_string(),
     ];
-    let selected_opts = choice_multi("Theme Features", &opts, &[1]).unwrap_or_else(|_| vec![1]);
+    let selected_opts = match choice_multi("Theme Features", &opts, &[0, 3, 6]) {
+        Ok(s) => s,
+        Err(_) => {
+            println!(" [ Custom theme creation cancelled ]");
+            return 0;
+        }
+    };
 
     let enable_user = selected_opts.contains(&0);
-    let use_powerline = selected_opts.contains(&1);
+    let enable_host = selected_opts.contains(&1);
+    let enable_time = selected_opts.contains(&2);
+    let enable_badge = selected_opts.contains(&3);
+    let enable_error = selected_opts.contains(&4);
+    let enable_sym_color = selected_opts.contains(&5);
+    let use_powerline = selected_opts.contains(&6);
 
     let (user_fg, user_bg) = if enable_user {
-        (Some(15), Some(236))
+        let u_bg = match choice_single("Select User Background Color", &color_names, 0) {
+            Ok(idx) if idx < color_palette.len() => color_palette[idx].1,
+            _ => 236,
+        };
+        let u_fg = match choice_single("Select User Text Color", &color_names, 10) {
+            Ok(idx) if idx < color_palette.len() => color_palette[idx].1,
+            _ => 15,
+        };
+        (Some(u_fg), Some(u_bg))
     } else {
         (None, None)
+    };
+
+    let (host_fg, host_bg) = if enable_host {
+        let h_bg = match choice_single("Select Host Background Color", &color_names, 4) {
+            Ok(idx) if idx < color_palette.len() => color_palette[idx].1,
+            _ => 141,
+        };
+        let h_fg = match choice_single("Select Host Text Color", &color_names, 10) {
+            Ok(idx) if idx < color_palette.len() => color_palette[idx].1,
+            _ => 15,
+        };
+        (Some(h_fg), Some(h_bg))
+    } else {
+        (None, None)
+    };
+
+    let (badge_fg, badge_bg) = if enable_badge {
+        let b_bg = match choice_single("Select Badge Background Color", &color_names, 6) {
+            Ok(idx) if idx < color_palette.len() => color_palette[idx].1,
+            _ => 220,
+        };
+        let b_fg = match choice_single("Select Badge Text Color", &color_names, 11) {
+            Ok(idx) if idx < color_palette.len() => color_palette[idx].1,
+            _ => 16,
+        };
+        (b_fg, b_bg)
+    } else {
+        (16, 220)
+    };
+
+    let (time_fg, time_bg) = if enable_time {
+        let t_bg = match choice_single("Select Time Background Color", &color_names, 9) {
+            Ok(idx) if idx < color_palette.len() => color_palette[idx].1,
+            _ => 245,
+        };
+        let t_fg = match choice_single("Select Time Text Color", &color_names, 11) {
+            Ok(idx) if idx < color_palette.len() => color_palette[idx].1,
+            _ => 16,
+        };
+        (Some(t_fg), Some(t_bg))
+    } else {
+        (None, None)
+    };
+
+    let (error_fg, error_bg) = if enable_error {
+        let e_bg = match choice_single("Select Error Status Background Color", &color_names, 8) {
+            Ok(idx) if idx < color_palette.len() => color_palette[idx].1,
+            _ => 203,
+        };
+        let e_fg = match choice_single("Select Error Status Text Color", &color_names, 10) {
+            Ok(idx) if idx < color_palette.len() => color_palette[idx].1,
+            _ => 15,
+        };
+        (Some(e_fg), Some(e_bg))
+    } else {
+        (None, None)
+    };
+
+    let prompt_sym_color = if enable_sym_color {
+        match choice_single("Select Prompt Symbol Color", &color_names, 3) {
+            Ok(idx) if idx < color_palette.len() => Some(color_palette[idx].1),
+            _ => None,
+        }
+    } else {
+        None
     };
 
     let prompt_sym = input_text("Enter prompt symbol", Some(&config.prompt_symbol)).ok();
@@ -836,10 +1115,18 @@ fn theme_wizard(config: &mut Config) -> i32 {
         path_bg: color_palette[path_bg_idx].1,
         git_fg: color_palette[git_fg_idx].1,
         git_bg: color_palette[git_bg_idx].1,
-        badge_fg: color_palette[badge_fg_idx].1,
-        badge_bg: color_palette[badge_bg_idx].1,
+        badge_fg,
+        badge_bg,
         user_fg,
         user_bg,
+        host_fg,
+        host_bg,
+        time_fg,
+        time_bg,
+        error_fg,
+        error_bg,
+        prompt_symbol_fg: prompt_sym_color,
+        show_dev_badge: Some(enable_badge),
         use_powerline,
         prompt_symbol: prompt_sym,
     };
@@ -849,7 +1136,7 @@ fn theme_wizard(config: &mut Config) -> i32 {
     config.save();
 
     println!(
-        "\n {}{}✨ Custom theme '{}' created and activated!{}",
+        "\n {}{}Custom theme '{}' created and activated!{}",
         SetAttribute(Attribute::Bold),
         SetForegroundColor(Color::AnsiValue(78)),
         name,

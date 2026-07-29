@@ -248,6 +248,13 @@ impl LeditEditor {
                         break;
                     } else if code == KeyCode::Char('n') || code == KeyCode::Char('N') {
                         break;
+                    } else if (code == KeyCode::Char('c')
+                        && modifiers.contains(KeyModifiers::CONTROL))
+                        || code == KeyCode::Char('\x03')
+                        || code == KeyCode::Esc
+                    {
+                        status_message = "[ Exit cancelled ]".to_string();
+                        continue;
                     } else {
                         status_message = "[ Cancelled ]".to_string();
                         continue;
@@ -278,16 +285,34 @@ impl LeditEditor {
                     continue;
                 }
 
-                if code == KeyCode::Char('c') && modifiers.contains(KeyModifiers::CONTROL) {
-                    let total_chars: usize = lines.iter().map(|l| l.len()).sum();
+                if (code == KeyCode::Char('c') && modifiers.contains(KeyModifiers::CONTROL))
+                    || code == KeyCode::Char('\x03')
+                {
+                    let total_chars: usize = lines.iter().map(|l| l.chars().count()).sum();
+                    let line_count = lines.len();
+                    let line_char_count = if line_count > 0 && cy < line_count {
+                        lines[cy].chars().count()
+                    } else {
+                        0
+                    };
+                    let pct = if line_count > 0 {
+                        ((cy + 1) as f64 / line_count as f64) * 100.0
+                    } else {
+                        0.0
+                    };
+                    let char_col = if line_count > 0 && cy < line_count {
+                        lines[cy][..cx].chars().count() + 1
+                    } else {
+                        1
+                    };
                     status_message = format!(
                         "[ line {}/{} ({:.0}%), col {}/{}, char {}/{} ]",
                         cy + 1,
-                        lines.len(),
-                        ((cy + 1) as f64 / lines.len() as f64) * 100.0,
-                        cx + 1,
-                        lines[cy].len() + 1,
-                        cx + 1,
+                        line_count,
+                        pct,
+                        char_col,
+                        line_char_count + 1,
+                        char_col,
                         total_chars
                     );
                     continue;
@@ -319,13 +344,23 @@ impl LeditEditor {
                 match code {
                     KeyCode::Up => {
                         cy = cy.saturating_sub(1);
+                        if cx > lines[cy].len() {
+                            cx = lines[cy].len();
+                        }
                     }
                     KeyCode::Down if cy + 1 < lines.len() => {
                         cy += 1;
+                        if cx > lines[cy].len() {
+                            cx = lines[cy].len();
+                        }
                     }
                     KeyCode::Left => {
                         if cx > 0 {
-                            cx -= 1;
+                            if let Some(ch) = lines[cy][..cx].chars().next_back() {
+                                cx -= ch.len_utf8();
+                            } else {
+                                cx = 0;
+                            }
                         } else if cy > 0 {
                             cy -= 1;
                             cx = lines[cy].len();
@@ -333,7 +368,9 @@ impl LeditEditor {
                     }
                     KeyCode::Right => {
                         if cx < lines[cy].len() {
-                            cx += 1;
+                            if let Some(ch) = lines[cy][cx..].chars().next() {
+                                cx += ch.len_utf8();
+                            }
                         } else if cy + 1 < lines.len() {
                             cy += 1;
                             cx = 0;
@@ -341,9 +378,12 @@ impl LeditEditor {
                     }
                     KeyCode::Backspace => {
                         if cx > 0 {
-                            lines[cy].remove(cx - 1);
-                            cx -= 1;
-                            modified = true;
+                            if let Some(ch) = lines[cy][..cx].chars().next_back() {
+                                let ch_len = ch.len_utf8();
+                                cx -= ch_len;
+                                lines[cy].remove(cx);
+                                modified = true;
+                            }
                         } else if cy > 0 {
                             let prev_len = lines[cy - 1].len();
                             let current_line = lines.remove(cy);
@@ -362,7 +402,7 @@ impl LeditEditor {
                     }
                     KeyCode::Char(c) => {
                         lines[cy].insert(cx, c);
-                        cx += 1;
+                        cx += c.len_utf8();
                         modified = true;
                     }
                     _ => {}

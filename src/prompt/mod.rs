@@ -357,27 +357,38 @@ impl PromptBuilder {
         let current_dir = env::current_dir().unwrap_or_else(|_| Path::new(".").to_path_buf());
         let formatted_path = format_path(&current_dir);
 
+        if let (Some(hfg), Some(hbg)) = (custom.host_fg, custom.host_bg) {
+            let host = env::var("COMPUTERNAME")
+                .or_else(|_| env::var("HOSTNAME"))
+                .unwrap_or_else(|_| "localhost".to_string());
+            segments.push(Segment::new(
+                format!(" {} ", host),
+                Color::AnsiValue(hfg),
+                Color::AnsiValue(hbg),
+            ));
+        }
+
         if let (Some(ufg), Some(ubg)) = (custom.user_fg, custom.user_bg) {
             let username = env::var("USERNAME")
                 .or_else(|_| env::var("USER"))
                 .unwrap_or_else(|_| "lshell".to_string());
             segments.push(Segment::new(
-                format!("  {} ", username),
+                format!(" {} ", username),
                 Color::AnsiValue(ufg),
                 Color::AnsiValue(ubg),
             ));
         }
 
         segments.push(Segment::new(
-            format!("  {} ", formatted_path),
+            format!(" {} ", formatted_path),
             Color::AnsiValue(custom.path_fg),
             Color::AnsiValue(custom.path_bg),
         ));
 
-        if config.show_dev_badge {
-            if let Some((badge_icon, _)) = detect_dev_badge(&current_dir) {
+        if custom.show_dev_badge.unwrap_or(config.show_dev_badge) {
+            if let Some((badge_name, _)) = detect_dev_badge(&current_dir) {
                 segments.push(Segment::new(
-                    format!(" {} ", badge_icon),
+                    format!(" {} ", badge_name),
                     Color::AnsiValue(custom.badge_fg),
                     Color::AnsiValue(custom.badge_bg),
                 ));
@@ -388,18 +399,29 @@ impl PromptBuilder {
             if let Some(git) = GitInfo::get(&current_dir) {
                 let git_str = format_git_string(&git);
                 segments.push(Segment::new(
-                    format!("  {} ", git_str),
+                    format!(" {} ", git_str),
                     Color::AnsiValue(custom.git_fg),
                     Color::AnsiValue(custom.git_bg),
                 ));
             }
         }
 
-        if last_exit_code != 0 {
+        if let (Some(tfg), Some(tbg)) = (custom.time_fg, custom.time_bg) {
+            let time_str = chrono::Local::now().format("%H:%M:%S").to_string();
             segments.push(Segment::new(
-                format!(" ✘ {} ", last_exit_code),
-                Color::AnsiValue(15),
-                Color::AnsiValue(160),
+                format!(" {} ", time_str),
+                Color::AnsiValue(tfg),
+                Color::AnsiValue(tbg),
+            ));
+        }
+
+        if last_exit_code != 0 {
+            let err_fg = custom.error_fg.unwrap_or(15);
+            let err_bg = custom.error_bg.unwrap_or(160);
+            segments.push(Segment::new(
+                format!(" {} ", last_exit_code),
+                Color::AnsiValue(err_fg),
+                Color::AnsiValue(err_bg),
             ));
         }
 
@@ -410,12 +432,23 @@ impl PromptBuilder {
             .as_deref()
             .unwrap_or(&config.prompt_symbol);
 
+        let colored_symbol = if let Some(sym_fg) = custom.prompt_symbol_fg {
+            format!(
+                "{}{}{}",
+                crossterm::style::SetForegroundColor(Color::AnsiValue(sym_fg)),
+                symbol,
+                crossterm::style::ResetColor
+            )
+        } else {
+            symbol.to_string()
+        };
+
         if custom.line_layout == "single_line" {
             prompt.push(' ');
-            prompt.push_str(symbol);
+            prompt.push_str(&colored_symbol);
         } else {
             prompt.push('\n');
-            prompt.push_str(symbol);
+            prompt.push_str(&colored_symbol);
         }
         prompt
     }
@@ -427,28 +460,28 @@ fn format_git_string(git: &GitInfo) -> String {
 
 fn detect_dev_badge(dir: &Path) -> Option<(&'static str, u8)> {
     if dir.join("Cargo.toml").exists() {
-        Some(("🦀 Rust", 208))
+        Some(("Rust", 208))
     } else if dir.join("package.json").exists() {
-        Some(("⬢ Node", 114))
+        Some(("Node", 114))
     } else if dir.join("pyproject.toml").exists() || dir.join("requirements.txt").exists() {
-        Some(("🐍 Python", 220))
+        Some(("Python", 220))
     } else if dir.join("Dockerfile").exists() || dir.join("docker-compose.yml").exists() {
-        Some(("🐳 Docker", 75))
+        Some(("Docker", 75))
     } else if dir.join("go.mod").exists() {
-        Some(("🐹 Go", 81))
+        Some(("Go", 81))
     } else if dir.join("pom.xml").exists()
         || dir.join("build.gradle").exists()
         || dir.join("build.gradle.kts").exists()
     {
-        Some(("☕ Java", 172))
+        Some(("Java", 172))
     } else if dir.join("composer.json").exists() {
-        Some(("🐘 PHP", 141))
+        Some(("PHP", 141))
     } else if dir.join("Gemfile").exists() {
-        Some(("💎 Ruby", 160))
+        Some(("Ruby", 160))
     } else if dir.join("build.zig").exists() {
-        Some(("⚡ Zig", 214))
+        Some(("Zig", 214))
     } else if dir.join("CMakeLists.txt").exists() || dir.join("Makefile").exists() {
-        Some(("🛠️ C/C++", 110))
+        Some(("C/C++", 110))
     } else {
         None
     }
